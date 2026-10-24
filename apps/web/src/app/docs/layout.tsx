@@ -1,30 +1,35 @@
+import { LayoutDashboard } from "lucide-react";
 import Link from "next/link";
-import { Logo } from "@/components/logo";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { buttonClass } from "@/components/ui";
-import { DocsNav } from "./docs-nav";
-import { DOCS_PAGES } from "./docs-pages";
+import { DocsBreadcrumb, DocsPager, DocsSidebar, DocsToc } from "./docs-nav";
 
 export default function DocsLayout({ children }: { children: React.ReactNode }) {
 	return (
 		<div className="min-h-screen bg-bg">
-			<header className="sticky top-0 z-20 border-b border-line bg-panel/90 backdrop-blur">
-				<div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4">
-					<div className="flex items-center gap-3">
-						<Logo />
-						<span className="rounded-md bg-panel-2 px-2 py-0.5 text-xs font-medium text-muted">Docs</span>
-					</div>
-					<div className="flex items-center gap-2">
-						<ThemeToggle />
-						<Link href="/app" className={buttonClass("primary", "h-9")}>
-							Open dashboard
+			<div className="lg:pl-64">
+				{/* No backdrop-filter here: it would make the fixed sidebar and drawer position against the header. */}
+				<header className="sticky top-0 z-20 border-b border-line bg-panel">
+					<div className="flex h-14 items-center justify-between gap-3 px-4 sm:px-8 lg:h-16">
+						<div className="flex min-w-0 items-center gap-2">
+							{/* Fixed sidebar on desktop; on mobile only its menu button shows here. */}
+							<DocsSidebar />
+							<DocsBreadcrumb />
+						</div>
+						<Link href="/app" className={buttonClass("primary", "h-9 shrink-0")}>
+							<LayoutDashboard className="size-4" />
+							<span className="hidden sm:inline">Open dashboard</span>
 						</Link>
 					</div>
+				</header>
+				<div className="mx-auto flex max-w-6xl gap-12 px-4 py-10 sm:px-8">
+					<div className="min-w-0 flex-1">
+						<article className="prose-docs max-w-3xl">{children}</article>
+						<div className="max-w-3xl">
+							<DocsPager />
+						</div>
+					</div>
+					<DocsToc />
 				</div>
-			</header>
-			<div className="mx-auto grid max-w-6xl gap-10 px-4 py-10 md:grid-cols-[220px_1fr]">
-				<DocsNav pages={DOCS_PAGES} />
-				<article className="prose-docs min-w-0 max-w-3xl">{children}</article>
 			</div>
 		</div>
 	);

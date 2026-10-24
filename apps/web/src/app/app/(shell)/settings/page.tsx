@@ -33,18 +33,7 @@ export default async function SettingsPage() {
 				<p className="mt-1 text-sm text-muted">Appearance, your account and how the app behaves in this browser.</p>
 			</div>
 
-			<div className="grid grid-cols-1 gap-8 md:grid-cols-[180px_minmax(0,1fr)]">
-				<nav aria-label="Settings sections" className="hidden md:block">
-					<ul className="sticky top-6 grid gap-0.5 text-sm">
-						{nav.map((n) => (
-							<li key={n.id}>
-								<a href={`#${n.id}`} className="block rounded-lg px-3 py-2 text-muted transition hover:bg-panel-2 hover:text-fg">
-									{n.label}
-								</a>
-							</li>
-						))}
-					</ul>
-				</nav>
+			<div className="grid grid-cols-1 gap-8">
 
 				<div className="grid min-w-0 gap-6">
 					<SettingsSection id="appearance" title="Appearance" text="Choose how Relay looks. Saved on this device.">

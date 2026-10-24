@@ -1,40 +1,18 @@
 "use client";
 
 import { User, Users } from "lucide-react";
-import { useEffect, useState } from "react";
-import { callMethod } from "@/lib/client-api";
+import { useState } from "react";
+import { useMethod } from "@/lib/swr";
 import { cn } from "@/lib/utils";
 import { isGroup } from "./format";
 
-// Profile pictures are fetched lazily, deduplicated and cached per page load.
-const cache = new Map<string, Promise<string>>();
-
-function loadAvatar(instanceId: string, chatId: string): Promise<string> {
-	const key = `${instanceId}:${chatId}`;
-	let hit = cache.get(key);
-	if (!hit) {
-		hit = callMethod<{ urlAvatar: string }>(instanceId, "getAvatar", { body: { chatId } })
-			.then((r) => r.urlAvatar || "")
-			.catch(() => "");
-		cache.set(key, hit);
-	}
-	return hit;
-}
+// Profile pictures rarely change: SWR fetches each one once per page load and shares it between every avatar of that chat.
+const AVATAR_SWR = { revalidateIfStale: false, revalidateOnReconnect: false, shouldRetryOnError: false } as const;
 
 export function Avatar({ instanceId, chatId, size = 49, className }: { instanceId: string; chatId: string; size?: number; className?: string }) {
-	const [loaded, setLoaded] = useState<{ chatId: string; url: string } | null>(null);
+	const { data } = useMethod<{ urlAvatar: string }>(instanceId, "getAvatar", { chatId }, AVATAR_SWR);
 	const [failedUrl, setFailedUrl] = useState<string | null>(null);
-
-	useEffect(() => {
-		let alive = true;
-		loadAvatar(instanceId, chatId).then((url) => alive && setLoaded({ chatId, url }));
-		return () => {
-			alive = false;
-		};
-	}, [instanceId, chatId]);
-
-	// Ignore a stale result from the previous chatId while the new one loads.
-	const url = loaded?.chatId === chatId ? loaded.url : "";
+	const url = data?.urlAvatar ?? "";
 	const style = { width: size, height: size };
 	if (url && url !== failedUrl) {
 		// eslint-disable-next-line @next/next/no-img-element

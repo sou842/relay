@@ -6,7 +6,16 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { db, mongoClient } from "./db";
 
+if (process.env.NODE_ENV === "production" && !process.env.BETTER_AUTH_SECRET) throw new Error("BETTER_AUTH_SECRET is not set");
+
+// On Vercel, fall back to the deployment's own URLs so sign-in also works on preview deployments.
+const vercelOrigins = [process.env.VERCEL_URL, process.env.VERCEL_BRANCH_URL, process.env.VERCEL_PROJECT_PRODUCTION_URL].filter(Boolean).map((host) => `https://${host}`);
+
 export const auth = betterAuth({
+	baseURL: process.env.BETTER_AUTH_URL ?? (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : undefined),
+	trustedOrigins: vercelOrigins,
+	// Serverless instances don't share memory, so rate-limit counters live in the database.
+	rateLimit: { enabled: true, storage: "database" },
 	database: mongodbAdapter(db, { client: mongoClient }),
 	emailAndPassword: {
 		enabled: true,

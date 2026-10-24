@@ -26,7 +26,10 @@ const instrument = Instrument_Serif({
   subsets: ["latin"],
 });
 
+const siteUrl = process.env.BETTER_AUTH_URL ?? (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "http://localhost:3000");
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: { default: "Relay: self-hosted messaging gateway", template: "%s · Relay" },
   description: "Chat from the browser and automate with a GREEN-API-compatible HTTP API. Self-hosted, WhatsApp today, more messengers next.",
 };

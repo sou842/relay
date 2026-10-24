@@ -5,6 +5,10 @@ import { providerInfo } from "./providers";
 // leave the server; the browser talks to /api/instances/... which checks
 // ownership and then calls through here.
 
+if (process.env.NODE_ENV === "production" && (!process.env.GATEWAY_URL || !process.env.GATEWAY_ADMIN_KEY)) {
+	throw new Error("GATEWAY_URL and GATEWAY_ADMIN_KEY must be set in production");
+}
+
 const GATEWAY_URL = (process.env.GATEWAY_URL ?? "http://127.0.0.1:7700").replace(/\/$/, "");
 const ADMIN_KEY = process.env.GATEWAY_ADMIN_KEY ?? "";
 

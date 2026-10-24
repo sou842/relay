@@ -10,8 +10,8 @@ export default async function SignInPage({ searchParams }: PageProps<"/sign-in">
 	const { next } = await searchParams;
 	return (
 		<>
-			<h1 className="mb-1 text-xl font-semibold">Welcome back</h1>
-			<p className="mb-6 text-sm text-muted">Sign in to manage your instances and chats.</p>
+			<h1 className="mb-2 text-3xl font-semibold tracking-tight">Welcome back</h1>
+			<p className="mb-8 text-muted">Sign in to manage your instances and chats.</p>
 			<AuthForm mode="sign-in" next={typeof next === "string" ? next : undefined} />
 		</>
 	);

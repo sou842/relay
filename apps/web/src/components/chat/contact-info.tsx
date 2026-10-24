@@ -1,8 +1,7 @@
 "use client";
 
 import { X } from "lucide-react";
-import { useEffect, useState } from "react";
-import { callMethod } from "@/lib/client-api";
+import { useMethod } from "@/lib/swr";
 import { chatPhone, formatPhone } from "@/lib/utils";
 import { Avatar } from "./avatar";
 import { isGroup } from "./format";
@@ -36,18 +35,11 @@ export function ContactInfoPanel({
 	onOpenChat: (chatId: string) => void;
 }) {
 	const group = isGroup(chatId);
-	const [contact, setContact] = useState<ContactInfo | null>(null);
-	const [groupData, setGroupData] = useState<GroupData | null>(null);
-	const [error, setError] = useState<string | null>(null);
-
-	// The parent remounts this panel per chat (key={chatId}), so state starts empty.
-	useEffect(() => {
-		if (group) {
-			callMethod<GroupData>(instanceId, "getGroupData", { body: { groupId: chatId } }).then(setGroupData, (e) => setError(e.message));
-		} else {
-			callMethod<ContactInfo>(instanceId, "getContactInfo", { body: { chatId } }).then(setContact, (e) => setError(e.message));
-		}
-	}, [instanceId, chatId, group]);
+	const groupQuery = useMethod<GroupData>(group ? instanceId : null, "getGroupData", { groupId: chatId });
+	const contactQuery = useMethod<ContactInfo>(group ? null : instanceId, "getContactInfo", { chatId });
+	const groupData = groupQuery.data ?? null;
+	const contact = contactQuery.data ?? null;
+	const error = ((group ? groupQuery.error : contactQuery.error) as Error | undefined)?.message ?? null;
 
 	return (
 		<aside className="flex h-full min-h-0 flex-col border-l border-wa-line bg-wa-list">

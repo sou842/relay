@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Dialog } from "@/components/dialog";
 import { Button, buttonClass } from "@/components/ui";
 import { callMethod } from "@/lib/client-api";
+import { useMethod } from "@/lib/swr";
 import type { InstanceSummary } from "@/lib/instances";
 import { useInstanceEvents, type LiveEvent } from "@/lib/use-instance-events";
 import { chatPhone, cn, formatPhone } from "@/lib/utils";
@@ -50,10 +51,21 @@ function mediaType(file: File): string {
 
 export function ChatApp({ instance }: { instance: InstanceSummary }) {
 	const id = instance.id;
-	const [state, setState] = useState("starting");
-	const [selfPhone, setSelfPhone] = useState("");
-	const [chats, setChats] = useState<Chat[]>([]);
-	const [chatsLoaded, setChatsLoaded] = useState(false);
+	const { data: stateRes, error: stateError, mutate: mutateState } = useMethod<{ stateInstance: string }>(id, "getStateInstance");
+	const state = stateError ? "offline" : (stateRes?.stateInstance ?? "starting");
+	const { data: waSettings } = useMethod<{ phone: string }>(state === "authorized" ? id : null, "getWaSettings");
+	const selfPhone = waSettings?.phone ?? "";
+	// The chat list lives in SWR's cache; live events patch it in place without refetching.
+	const { data: serverChats, mutate: mutateChats } = useMethod<Chat[]>(id, "getChats");
+	// Chats opened via "New chat" that have no messages yet, so the server doesn't list them.
+	const [draftChats, setDraftChats] = useState<Chat[]>([]);
+	const chatsLoaded = serverChats !== undefined;
+	const chats = useMemo(() => {
+		const list = serverChats ?? [];
+		const known = new Set(list.map((c) => c.id));
+		return sortChats([...draftChats.filter((c) => !known.has(c.id)), ...list]);
+	}, [serverChats, draftChats]);
+	const setChats = useCallback((fn: (prev: Chat[]) => Chat[]) => void mutateChats((prev) => fn(prev ?? []), { revalidate: false }), [mutateChats]);
 	const [selected, setSelected] = useState<string | null>(null);
 	const [messages, setMessages] = useState<Map<string, Message[]>>(new Map());
 	const [hasMore, setHasMore] = useState<Map<string, boolean>>(new Map());
@@ -78,32 +90,7 @@ export function ChatApp({ instance }: { instance: InstanceSummary }) {
 
 	// ---- loading -----------------------------------------------------------
 
-	const loadChats = useCallback(async () => {
-		const list = await callMethod<Chat[]>(id, "getChats").catch(() => null);
-		if (!list) return;
-		setChats((prev) => {
-			// Keep chats opened via "New chat" that have no messages yet.
-			const known = new Set(list.map((c) => c.id));
-			return sortChats([...prev.filter((c) => !known.has(c.id) && !c.lastMessageTime), ...list]);
-		});
-		setChatsLoaded(true);
-	}, [id]);
-
-	const loadAccount = useCallback(async () => {
-		const s = await callMethod<{ stateInstance: string }>(id, "getStateInstance").catch(() => ({ stateInstance: "offline" }));
-		setState(s.stateInstance);
-		if (s.stateInstance === "authorized") {
-			const wa = await callMethod<{ phone: string }>(id, "getWaSettings").catch(() => null);
-			if (wa?.phone) setSelfPhone(wa.phone);
-		}
-	}, [id]);
-
-	useEffect(() => {
-		// Fetch on mount; both functions only set state after their requests resolve.
-		// eslint-disable-next-line react-hooks/set-state-in-effect
-		void loadAccount();
-		void loadChats();
-	}, [loadAccount, loadChats]);
+	const loadChats = useCallback(() => void mutateChats(), [mutateChats]);
 
 	const loadHistory = useCallback(
 		async (chatId: string, before?: number) => {
@@ -125,7 +112,7 @@ export function ChatApp({ instance }: { instance: InstanceSummary }) {
 			setChats((prev) => prev.map((c) => (c.id === chatId ? { ...c, unreadCount: 0 } : c)));
 			void callMethod(id, "readChat", { body: { chatId } }).catch(() => undefined);
 		},
-		[id],
+		[id, setChats],
 	);
 
 	const openChat = useCallback(
@@ -133,7 +120,7 @@ export function ChatApp({ instance }: { instance: InstanceSummary }) {
 			setSelected(chatId);
 			setReplyTo(null);
 			setEditing(null);
-			setChats((prev) => (prev.some((c) => c.id === chatId) ? prev : [{ id: chatId, name: "", unreadCount: 0 }, ...prev]));
+			if (!chats.some((c) => c.id === chatId)) setDraftChats((prev) => [{ id: chatId, name: "", unreadCount: 0 }, ...prev]);
 			markRead(chatId);
 			void callMethod(id, "subscribePresence", { body: { chatId } }).catch(() => undefined);
 			if (!messages.has(chatId)) {
@@ -142,7 +129,7 @@ export function ChatApp({ instance }: { instance: InstanceSummary }) {
 				setLoadingChat(false);
 			}
 		},
-		[id, loadHistory, markRead, messages],
+		[id, chats, loadHistory, markRead, messages],
 	);
 
 	// ---- live events -------------------------------------------------------
@@ -165,8 +152,8 @@ export function ChatApp({ instance }: { instance: InstanceSummary }) {
 		(event: LiveEvent) => {
 			switch (event.type) {
 				case "state":
-					setState(event.stateInstance);
-					if (event.stateInstance === "authorized") void loadAccount();
+					// Once authorized, the getWaSettings query switches on and loads the own number.
+					void mutateState({ stateInstance: event.stateInstance }, { revalidate: false });
 					break;
 				case "message": {
 					const m = event.message as unknown as Message;
@@ -227,7 +214,7 @@ export function ChatApp({ instance }: { instance: InstanceSummary }) {
 					break;
 			}
 		},
-		[loadAccount, loadChats, markRead, patchMessage],
+		[mutateState, loadChats, markRead, patchMessage, setChats],
 	);
 
 	const live = useInstanceEvents(id, onEvent);
@@ -277,7 +264,7 @@ export function ChatApp({ instance }: { instance: InstanceSummary }) {
 				...prev.filter((c) => c.id !== m.chatId),
 			]);
 		});
-	}, []);
+	}, [setChats]);
 
 	const quoteOf = (q?: Message) =>
 		q ? { stanzaId: q.idMessage, participant: q.type === "outgoing" ? selfId : q.senderId || q.chatId, typeMessage: q.typeMessage, textMessage: q.textMessage, caption: q.caption } : undefined;

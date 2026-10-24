@@ -1,10 +1,11 @@
 "use client";
 
-import { ArrowRight, MessageCircle, Plus, QrCode, Send, Settings, Smartphone } from "lucide-react";
+import { CircleCheck, Layers, MessageCircle, Plus, QrCode, Search, Send, Settings, Smartphone, WifiOff } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
+import useSWR from "swr";
 import { Dialog } from "@/components/dialog";
 import { LogoMark } from "@/components/logo";
 import { Button, Field, Input, StatePill } from "@/components/ui";
@@ -24,56 +25,52 @@ const providerIcon: Record<ProviderId, React.ComponentType<{ className?: string 
 	telegram: Send,
 };
 
-/** Polls every instance's live state; one request per instance every 10 seconds. */
+const OFFLINE: LiveInfo = { stateInstance: "offline", phone: "", avatar: "" };
+
+/** Polls every instance's live state every 10 seconds; an unreachable instance counts as offline. */
 function useLiveStates(instances: InstanceSummary[]) {
-	const [live, setLive] = useState<Record<string, LiveInfo>>({});
-	const key = instances.map((i) => i.id).join(",");
-
-	useEffect(() => {
-		let cancelled = false;
-		const ids = key ? key.split(",") : [];
-		const load = () =>
-			ids.forEach((id) =>
-				api<LiveInfo>(`/api/instances/${id}`)
-					.then((info) => !cancelled && setLive((m) => ({ ...m, [id]: info })))
-					.catch(() => !cancelled && setLive((m) => ({ ...m, [id]: { stateInstance: "offline", phone: "", avatar: "" } }))),
-			);
-		load();
-		const timer = setInterval(load, 10000);
-		return () => {
-			cancelled = true;
-			clearInterval(timer);
-		};
-	}, [key]);
-
-	return live;
+	const ids = instances.map((i) => i.id);
+	const { data } = useSWR(ids.length ? ["live-states", ...ids] : null, async ([, ...list]: string[]) => {
+		const entries = await Promise.all(list.map(async (id) => [id, await api<LiveInfo>(`/api/instances/${id}`).catch(() => OFFLINE)] as const));
+		return Object.fromEntries(entries) as Record<string, LiveInfo>;
+	}, { refreshInterval: 10000 });
+	return data ?? {};
 }
 
-function Stat({ label, value, hint }: { label: string; value: number | string; hint: string }) {
+function Stat({ label, value, hint, icon: Icon, tone }: { label: string; value: number | string; hint: string; icon: React.ComponentType<{ className?: string }>; tone: string }) {
 	return (
-		<div className="bg-panel px-6 py-5">
-			<div className="text-sm text-muted">{label}</div>
-			<div className="mt-1 font-display text-4xl leading-none">{value}</div>
-			<div className="mt-2 text-xs text-muted">{hint}</div>
+		<div className="rounded-xl border border-line bg-panel p-5">
+			<div className="flex items-center justify-between">
+				<span className="text-sm text-muted">{label}</span>
+				<span className={cn("grid size-9 place-items-center rounded-lg", tone)}>
+					<Icon className="size-[18px]" />
+				</span>
+			</div>
+			<div className="mt-3 text-3xl font-semibold tabular-nums tracking-tight">{value}</div>
+			<div className="mt-1 text-xs text-muted">{hint}</div>
 		</div>
 	);
 }
 
 export function InstanceList({ initial, userName }: { initial: InstanceSummary[]; userName: string }) {
 	const [creating, setCreating] = useState(false);
+	const [query, setQuery] = useState("");
 	const live = useLiveStates(initial);
 	const connected = initial.filter((i) => live[i.id]?.stateInstance === "authorized").length;
 	const needLinking = initial.filter((i) => live[i.id]?.stateInstance === "notAuthorized").length;
+	const offline = initial.length - connected - needLinking;
 	const first = userName.trim().split(/\s+/)[0];
+	const q = query.trim().toLowerCase();
+	const shown = q ? initial.filter((i) => i.name.toLowerCase().includes(q) || String(i.gatewayId).includes(q) || (live[i.id]?.phone ?? "").includes(q)) : initial;
 
 	return (
 		<>
-			<div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+			<div className="mb-8 flex flex-wrap items-center justify-between gap-4">
 				<div>
-					<p className="text-sm text-muted">{first ? `Welcome back, ${first}` : "Welcome back"}</p>
-					<h1 className="mt-1 font-display text-4xl leading-tight tracking-tight sm:text-5xl">Your instances</h1>
+					<h1 className="text-2xl font-semibold tracking-tight">Instances</h1>
+					<p className="mt-1 text-sm text-muted">{first ? `Welcome back, ${first}. ` : ""}Manage your linked messenger accounts.</p>
 				</div>
-				<Button onClick={() => setCreating(true)} className="h-11 rounded-full px-5">
+				<Button onClick={() => setCreating(true)}>
 					<Plus className="size-4" />
 					New instance
 				</Button>
@@ -83,26 +80,41 @@ export function InstanceList({ initial, userName }: { initial: InstanceSummary[]
 				<EmptyState onCreate={() => setCreating(true)} />
 			) : (
 				<>
-					<div className="mb-6 grid grid-cols-1 gap-px overflow-hidden rounded-2xl border border-line bg-line sm:grid-cols-3">
-						<Stat label="Instances" value={initial.length} hint="Linked messenger accounts" />
-						<Stat label="Connected" value={connected} hint="Ready to send and receive" />
-						<Stat label="Need linking" value={needLinking} hint={needLinking ? "Scan the QR code to finish" : "Nothing to do"} />
+					<div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+						<Stat label="Total instances" value={initial.length} hint="Linked messenger accounts" icon={Layers} tone="bg-accent/10 text-accent-strong" />
+						<Stat label="Connected" value={connected} hint="Ready to send and receive" icon={CircleCheck} tone="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" />
+						<Stat label="Need linking" value={needLinking} hint={needLinking ? "Scan the QR code to finish" : "Nothing to do"} icon={QrCode} tone="bg-amber-500/10 text-amber-600 dark:text-amber-400" />
+						<Stat label="Offline / other" value={offline} hint="Starting, sleeping or unreachable" icon={WifiOff} tone="bg-panel-2 text-muted" />
 					</div>
-					<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-						{initial.map((instance) => (
-							<InstanceCard key={instance.id} instance={instance} live={live[instance.id] ?? null} />
-						))}
-						<button
-							type="button"
-							onClick={() => setCreating(true)}
-							className="flex min-h-52 flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-line text-muted transition hover:border-accent hover:bg-panel hover:text-accent-strong"
-						>
-							<span className="grid size-11 place-items-center rounded-full border border-line bg-panel">
-								<Plus className="size-5" />
-							</span>
-							<span className="text-sm font-medium">New instance</span>
-						</button>
-					</div>
+
+					<section className="overflow-hidden rounded-xl border border-line bg-panel">
+						<div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-4">
+							<div>
+								<h2 className="font-medium">All instances</h2>
+								<p className="text-xs text-muted">{shown.length} of {initial.length} shown</p>
+							</div>
+							<div className="relative w-full sm:w-64">
+								<Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" />
+								<Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search name, phone or ID" className="pl-9" aria-label="Search instances" />
+							</div>
+						</div>
+
+						<div className="hidden grid-cols-[minmax(0,2fr)_minmax(0,1.2fr)_minmax(0,1.3fr)_auto] gap-4 border-b border-line bg-panel-2/60 px-5 py-2.5 text-xs font-medium uppercase tracking-wider text-muted md:grid">
+							<span>Instance</span>
+							<span>Status</span>
+							<span>Phone</span>
+							<span className="w-24 text-right">Actions</span>
+						</div>
+						{shown.length === 0 ? (
+							<div className="px-5 py-12 text-center text-sm text-muted">No instances match “{query}”.</div>
+						) : (
+							<ul className="divide-y divide-line">
+								{shown.map((instance) => (
+									<InstanceRow key={instance.id} instance={instance} live={live[instance.id] ?? null} />
+								))}
+							</ul>
+						)}
+					</section>
 				</>
 			)}
 			<CreateInstanceDialog open={creating} onClose={() => setCreating(false)} />
@@ -139,59 +151,55 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
 	);
 }
 
-function InstanceCard({ instance, live }: { instance: InstanceSummary; live: LiveInfo | null }) {
+function InstanceRow({ instance, live }: { instance: InstanceSummary; live: LiveInfo | null }) {
 	const Icon = providerIcon[instance.provider];
-	const opensChat = live?.stateInstance !== "notAuthorized";
 	const needsLink = live?.stateInstance === "notAuthorized";
 
 	return (
-		<div className="group relative flex min-h-52 flex-col rounded-2xl border border-line bg-panel p-5 transition hover:-translate-y-0.5 hover:border-accent/50 hover:shadow-lg hover:shadow-black/5">
-			<div className="flex items-start justify-between gap-3">
+		<li className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 px-5 py-4 transition hover:bg-panel-2/50 md:grid-cols-[minmax(0,2fr)_minmax(0,1.2fr)_minmax(0,1.3fr)_auto]">
+			<div className="flex min-w-0 items-center gap-3">
 				{live?.avatar ? (
 					// eslint-disable-next-line @next/next/no-img-element
-					<img src={live.avatar} alt="" className="size-12 rounded-2xl object-cover" />
+					<img src={live.avatar} alt="" className="size-10 shrink-0 rounded-full object-cover" />
 				) : (
-					<div className="grid size-12 place-items-center rounded-2xl bg-accent/12 text-accent-strong">
-						<Icon className="size-5" />
+					<div className="grid size-10 shrink-0 place-items-center rounded-full bg-accent/10 text-accent-strong">
+						<Icon className="size-[18px]" />
 					</div>
 				)}
+				<div className="min-w-0">
+					<Link href={`/app/i/${instance.id}`} className="block truncate font-medium hover:underline">
+						{instance.name}
+					</Link>
+					<div className="truncate text-xs text-muted">
+						{PROVIDERS[instance.provider].label} · #{instance.gatewayId}
+					</div>
+				</div>
+			</div>
+
+			<div className="order-3 md:order-none">
 				<StatePill state={live?.stateInstance ?? "starting"} />
 			</div>
 
-			<div className="mt-4 min-w-0">
-				<div className="truncate text-lg font-medium tracking-tight">
-					{/* stretched link: the whole card opens the chat (or the QR page until the instance is linked) */}
-					<Link href={opensChat ? `/app/i/${instance.id}/chat` : `/app/i/${instance.id}`} className="after:absolute after:inset-0 after:rounded-2xl">
-						{instance.name}
-					</Link>
-				</div>
-				<div className="mt-0.5 text-xs text-muted">
-					{PROVIDERS[instance.provider].label} · #{instance.gatewayId}
-				</div>
+			<div className="order-4 flex items-center gap-2 text-sm text-muted md:order-none">
+				<Smartphone className="size-4 shrink-0" />
+				<span className="truncate">{needsLink ? "Not linked yet" : live?.phone ? formatPhone(live.phone) : "—"}</span>
 			</div>
 
-			<div className="mt-auto flex items-center gap-2 border-t border-line pt-4 text-sm">
+			<div className="flex w-24 items-center justify-end gap-1 md:order-none">
 				{needsLink ? (
-					<span className="flex items-center gap-2 font-medium text-accent-strong">
-						<QrCode className="size-4" /> Scan to link
-						<ArrowRight className="size-3.5 transition group-hover:translate-x-0.5" />
-					</span>
+					<Link href={`/app/i/${instance.id}`} className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-accent px-3 text-xs font-medium text-accent-fg transition hover:opacity-90">
+						<QrCode className="size-3.5" /> Link
+					</Link>
 				) : (
-					<span className="flex items-center gap-2 text-muted">
-						<Smartphone className="size-4" />
-						{live?.phone ? formatPhone(live.phone) : "—"}
-					</span>
+					<Link href={`/app/i/${instance.id}/chat`} title="Open chat" aria-label={`Open chat for ${instance.name}`} className="grid size-8 place-items-center rounded-lg text-muted transition hover:bg-panel-2 hover:text-fg">
+						<MessageCircle className="size-4" />
+					</Link>
 				)}
-				<Link
-					href={`/app/i/${instance.id}`}
-					title="Manage instance"
-					aria-label={`Manage ${instance.name}`}
-					className="relative z-10 ml-auto grid size-8 place-items-center rounded-full text-muted transition hover:bg-panel-2 hover:text-fg"
-				>
+				<Link href={`/app/i/${instance.id}`} title="Manage instance" aria-label={`Manage ${instance.name}`} className="grid size-8 place-items-center rounded-lg text-muted transition hover:bg-panel-2 hover:text-fg">
 					<Settings className="size-4" />
 				</Link>
 			</div>
-		</div>
+		</li>
 	);
 }
 

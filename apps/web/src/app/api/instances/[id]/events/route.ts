@@ -5,6 +5,10 @@ import { credentials } from "@/lib/instances";
 // Live SSE feed: relays the gateway's /events stream for an owned instance,
 // rewriting media URLs event by event.
 
+// Vercel ends a function at maxDuration; the browser's EventSource then reconnects on its own.
+export const dynamic = "force-dynamic";
+export const maxDuration = 300;
+
 type Ctx = { params: Promise<{ id: string }> };
 
 export const GET = handle(async (request: Request, { params }: Ctx) => {

@@ -1,0 +1,77 @@
+export const metadata = { title: "HTTP API" };
+
+# HTTP API
+
+Every instance has an `idInstance` and an `apiTokenInstance`. You'll find
+both on the instance page under **API credentials**. All calls use this shape:
+
+```text
+{apiUrl}/waInstance{idInstance}/{method}/{apiTokenInstance}
+```
+
+The API follows GREEN-API's contract: same method names, request bodies and
+responses. Method names are case-insensitive.
+
+## Chat IDs
+
+| Kind | Format | Example |
+|---|---|---|
+| Person | country code + number + `@c.us` | `919876543210@c.us` |
+| Group | group id + `@g.us` | `120363000000000000@g.us` |
+
+## Send a message
+
+```bash
+curl -X POST "http://127.0.0.1:7700/waInstance1101000001/sendMessage/YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"chatId":"919876543210@c.us","message":"Hello!"}'
+```
+
+Response: `{"idMessage":"3EB0…"}`. Messages go through a paced queue (see
+`delaySendMessagesMilliseconds` in settings), so `idMessage` is returned
+immediately.
+
+## Common methods
+
+| Method | Verb | Body |
+|---|---|---|
+| `sendMessage` | POST | `chatId`, `message`, `quotedMessageId?` |
+| `sendFileByUrl` | POST | `chatId`, `urlFile`, `fileName`, `caption?` |
+| `sendFileByUpload` | POST multipart | `file`, `chatId`, `fileName`, `caption?` |
+| `sendLocation` | POST | `chatId`, `latitude`, `longitude`, `nameLocation?`, `address?` |
+| `sendContact` | POST | `chatId`, `contact: { phoneContact, firstName? }` |
+| `sendPoll` | POST | `chatId`, `message`, `options: [{ optionName }]`, `multipleAnswers?` |
+| `forwardMessages` | POST | `chatId`, `chatIdFrom`, `messages: [idMessage]` |
+| `editMessage` | POST | `chatId`, `idMessage`, `message` |
+| `deleteMessage` | POST | `chatId`, `idMessage` |
+| `readChat` | POST | `chatId`, `idMessage?` |
+| `checkWhatsapp` | POST | `phoneNumber` |
+| `getAvatar` / `getContactInfo` | POST | `chatId` |
+| `getChatHistory` | POST | `chatId`, `count?` |
+| `getChats` | GET | none |
+| `getStateInstance` | GET | none |
+| `getSettings` / `setSettings` | GET / POST | settings object |
+
+Relay adds a few extensions that are not part of GREEN-API: `sendReaction`
+(`chatId`, `idMessage`, `reaction`), `subscribePresence` (`chatId`), and
+`voiceNote: true` on `sendFileByUpload`.
+
+## Using GREEN-API's SDKs
+
+The official JavaScript SDK (v1) accepts a custom host:
+
+```js
+import whatsAppClient from "@green-api/whatsapp-api-client";
+
+const api = whatsAppClient.restAPI({
+  host: "http://127.0.0.1:7700",
+  media: "http://127.0.0.1:7700",
+  idInstance: "1101000001",
+  apiTokenInstance: "YOUR_TOKEN",
+});
+
+await api.message.sendMessage("919876543210@c.us", null, "Hi from the SDK");
+```
+
+> Keep the token secret: anyone who has it can send messages as you. Rotate it
+> from the instance page if it leaks.

@@ -1,0 +1,52 @@
+export const metadata = { title: "Receiving messages" };
+
+# Receiving messages
+
+Everything that happens on the account becomes a **notification**: incoming
+messages, messages you send, delivery and read statuses, calls and state
+changes. Pick one of two ways to consume them.
+
+## Option A: polling
+
+Leave the webhook URL empty and poll:
+
+```python
+import requests
+
+B = "http://127.0.0.1:7700/waInstance1101000001"
+T = "YOUR_TOKEN"
+
+while True:
+    n = requests.get(f"{B}/receiveNotification/{T}", params={"receiveTimeout": 20}).json()
+    if not n:
+        continue
+    body = n["body"]
+    if body["typeWebhook"] == "incomingMessageReceived":
+        print(body["senderData"]["chatId"], body["messageData"])
+    requests.delete(f"{B}/deleteNotification/{T}/{n['receiptId']}")  # acknowledge
+```
+
+The queue is first-in, first-out and keeps notifications for 24 hours. A
+notification stays at the head until you delete it, so a crash never loses one.
+
+## Option B: webhook
+
+Set **Webhook URL** on the instance page. The gateway POSTs each notification
+as JSON and retries with back-off until your server answers with a 2xx. If you
+set a **Webhook token**, it is sent as `Authorization: Bearer <token>`.
+
+## Notification types
+
+| `typeWebhook` | When |
+|---|---|
+| `incomingMessageReceived` | Someone sent you a message |
+| `outgoingMessageReceived` | You sent a message from your phone |
+| `outgoingAPIMessageReceived` | A message sent through the API |
+| `outgoingMessageStatus` | Sent / delivered / read / failed |
+| `stateInstanceChanged` | Linked, unlinked, starting… |
+| `incomingCall` | Incoming call events |
+
+Each type can be switched off in the instance settings.
+
+> The chat UI uses a separate live feed, so it never takes notifications
+> away from your scripts.

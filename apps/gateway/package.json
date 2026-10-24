@@ -1,0 +1,29 @@
+{
+  "name": "gateway",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Self-hosted GREEN-API-compatible WhatsApp/Telegram gateway (personal test project)",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env --import tsx src/index.ts",
+    "dev": "node --env-file-if-exists=.env --watch --import tsx src/index.ts",
+    "cli": "node --env-file-if-exists=.env --import tsx src/cli.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@fastify/multipart": "10.1.6",
+    "baileys": "7.0.0-rc14",
+    "fastify": "5.12.7",
+    "pino": "10.4.0",
+    "qrcode": "1.5.4"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.1",
+    "@types/qrcode": "1.5.5",
+    "tsx": "4.23.15",
+    "typescript": "5.9.3"
+  }
+}

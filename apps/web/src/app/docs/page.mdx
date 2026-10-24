@@ -1,0 +1,33 @@
+export const metadata = { title: "Docs" };
+
+# Relay documentation
+
+Relay is a self-hosted messaging gateway. It connects your WhatsApp account as a
+**linked device**, then lets you:
+
+- chat from the browser with a WhatsApp Web-style interface,
+- send and receive messages from your own code over a simple HTTP API,
+- push incoming messages to your server with webhooks.
+
+The HTTP API follows the **GREEN-API** contract, so their official SDKs and
+examples work against your own server. Telegram support is planned; the
+platform is built so new messengers plug in as additional providers.
+
+## How it fits together
+
+| Part | What it does | Where |
+|---|---|---|
+| **Gateway** | Holds the WhatsApp session, queues sends, stores message history, serves the HTTP API | `apps/gateway` (port 7700) |
+| **Web app** | Accounts, this documentation, dashboard, chat UI | `apps/web` (port 3000) |
+| **MongoDB** | Users, sessions and which user owns which instance | your Atlas cluster |
+
+The browser only talks to the web app. The web app checks that you own an
+instance, then calls the gateway with that instance's token, which never
+reaches the browser.
+
+## Start here
+
+1. [Getting started](/docs/getting-started): install and run both apps.
+2. [Linking WhatsApp](/docs/linking): scan the QR code.
+3. [Using the chat](/docs/chat): message people from the browser.
+4. [HTTP API](/docs/api): automate with scripts.

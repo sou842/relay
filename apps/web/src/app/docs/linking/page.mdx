@@ -1,0 +1,44 @@
+export const metadata = { title: "Linking WhatsApp" };
+
+# Linking WhatsApp
+
+Each instance is linked to one WhatsApp account, the same way WhatsApp Web or
+WhatsApp Desktop is linked. Your phone stays the main device.
+
+## With a QR code
+
+1. Open the instance in the dashboard. While it is not linked, a QR code is shown.
+2. On your phone open WhatsApp → **Settings** (iPhone) or **⋮** (Android) →
+   **Linked devices** → **Link a device**.
+3. Point the phone at the QR code. The code refreshes about every 20 seconds;
+   the dashboard updates it for you.
+
+The status changes to **Connected** within a few seconds.
+
+## With a phone number code
+
+If you cannot scan (for example the dashboard is open on the same phone):
+
+1. Click **Link with phone number instead** and enter your number with the
+   country code, digits only, e.g. `919876543210`.
+2. On your phone: **Linked devices** → **Link a device** → **Link with phone
+   number instead**, and type the 8-character code shown.
+
+## Staying linked
+
+- The session is stored by the gateway, so restarts don't need a new scan.
+- Your phone does not need to be online, but WhatsApp unlinks devices whose
+  phone has been offline for about **14 days**. Open WhatsApp on the phone now
+  and then.
+- **Unlink phone** on the instance page removes the gateway from your linked
+  devices. Message history in Relay is kept.
+
+## Instance states
+
+| State | Meaning |
+|---|---|
+| Starting | The gateway is connecting |
+| Not linked | Waiting for a QR scan or phone code |
+| Connected | Ready to send and receive |
+| Blocked | WhatsApp refused the session |
+| Gateway offline | The web app cannot reach the gateway |

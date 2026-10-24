@@ -1,0 +1,278 @@
+@import "tailwindcss";
+
+/*
+ * Theming: the root <html> carries data-theme="light" | "dark", set before first
+ * paint by the inline script in layout.tsx and flipped by <ThemeToggle>. Tailwind's
+ * dark: variant follows the same attribute.
+ */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* ---- Product UI (landing, auth, dashboard, docs). Brand: #464EB8 ---- */
+:root {
+  color-scheme: light;
+
+  --bg: #f7f5f3;
+  --panel: #ffffff;
+  --panel-2: #efece8;
+  --line: rgba(55, 50, 47, 0.13);
+  --fg: #37322f;
+  --muted: #6e6761;
+  --accent: #464eb8;
+  --accent-strong: #464eb8; /* readable accent text on the page background */
+  --accent-fg: #ffffff;
+  --accent-soft: #e9e9f6;
+  --danger: #d93025;
+  --grad-a: #464eb8;
+  --grad-b: #8a5cf0;
+  --code-bg: #2a2623;
+  --code-fg: #eee9e4;
+
+  /* ---- Chat (WhatsApp Web palette, kept separate from the brand) ---- */
+  --wa-app: #eae6df;
+  --wa-list: #ffffff;
+  --wa-panel: #f0f2f5;
+  --wa-chat: #efeae2;
+  --wa-doodle: rgba(17, 27, 33, 0.06);
+  --wa-in: #ffffff;
+  --wa-out: #d9fdd3;
+  --wa-text: #111b21;
+  --wa-muted: #667781;
+  --wa-line: #e9edef;
+  --wa-hover: #f5f6f6;
+  --wa-active: #f0f2f5;
+  --wa-input: #ffffff;
+  --wa-icon: #54656f;
+  --wa-tick-read: #53bdeb;
+  --wa-badge: #25d366;
+  --wa-system: #ffffff;
+  --wa-quote: rgba(11, 20, 26, 0.05);
+  --wa-shadow: 0 1px 0.5px rgba(11, 20, 26, 0.13);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg: #121110;
+  --panel: #1b1917;
+  --panel-2: #23201e;
+  --line: rgba(255, 255, 255, 0.1);
+  --fg: #f2eeea;
+  --muted: #a39c95;
+  --accent: #464eb8;
+  --accent-strong: #a9aef5;
+  --accent-fg: #ffffff;
+  --accent-soft: #25264a;
+  --danger: #f15c6d;
+  --grad-a: #8e95ff;
+  --grad-b: #d08cff;
+  --code-bg: #0c0b0a;
+  --code-fg: #eee9e4;
+
+  --wa-app: #0c1317;
+  --wa-list: #111b21;
+  --wa-panel: #202c33;
+  --wa-chat: #0b141a;
+  --wa-doodle: rgba(233, 237, 239, 0.035);
+  --wa-in: #202c33;
+  --wa-out: #005c4b;
+  --wa-text: #e9edef;
+  --wa-muted: #8696a0;
+  --wa-line: #222d34;
+  --wa-hover: #202c33;
+  --wa-active: #2a3942;
+  --wa-input: #2a3942;
+  --wa-icon: #aebac1;
+  --wa-tick-read: #53bdeb;
+  --wa-badge: #00a884;
+  --wa-system: #182229;
+  --wa-quote: rgba(255, 255, 255, 0.06);
+  --wa-shadow: 0 1px 0.5px rgba(11, 20, 26, 0.13);
+}
+
+/* The chat keeps WhatsApp's green accent; everything else uses the brand indigo. */
+.wa-theme {
+  --accent: #00a884;
+  --accent-strong: #008069;
+  --accent-fg: #ffffff;
+  --accent-soft: #d9fdd3;
+}
+:root[data-theme="dark"] .wa-theme {
+  --accent: #00a884;
+  --accent-strong: #06cf9c;
+  --accent-fg: #111b21;
+  --accent-soft: #005c4b;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-panel: var(--panel);
+  --color-panel-2: var(--panel-2);
+  --color-line: var(--line);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-fg: var(--accent-fg);
+  --color-accent-soft: var(--accent-soft);
+  --color-danger: var(--danger);
+
+  --color-wa-app: var(--wa-app);
+  --color-wa-list: var(--wa-list);
+  --color-wa-panel: var(--wa-panel);
+  --color-wa-chat: var(--wa-chat);
+  --color-wa-in: var(--wa-in);
+  --color-wa-out: var(--wa-out);
+  --color-wa-text: var(--wa-text);
+  --color-wa-muted: var(--wa-muted);
+  --color-wa-line: var(--wa-line);
+  --color-wa-hover: var(--wa-hover);
+  --color-wa-active: var(--wa-active);
+  --color-wa-input: var(--wa-input);
+  --color-wa-icon: var(--wa-icon);
+  --color-wa-tick-read: var(--wa-tick-read);
+  --color-wa-badge: var(--wa-badge);
+  --color-wa-system: var(--wa-system);
+  --color-wa-quote: var(--wa-quote);
+
+  --font-display: var(--font-instrument), Georgia, "Times New Roman", serif;
+  --font-sans: var(--font-inter), "Segoe UI", system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, Consolas, monospace;
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--fg);
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 5rem;
+}
+
+/* ---- Landing page ---- */
+.text-gradient {
+  background: linear-gradient(100deg, var(--grad-a), var(--grad-b));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.hero-glow {
+  background:
+    radial-gradient(55% 60% at 50% 0%, color-mix(in srgb, var(--accent) 30%, transparent), transparent 72%),
+    radial-gradient(30% 40% at 85% 10%, color-mix(in srgb, var(--grad-b) 18%, transparent), transparent 70%);
+}
+
+.grid-bg {
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--line) 80%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--line) 80%, transparent) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 0%, #000 20%, transparent 75%);
+}
+
+.cta-band {
+  background:
+    radial-gradient(60% 120% at 20% 0%, rgba(255, 255, 255, 0.16), transparent 60%),
+    linear-gradient(120deg, #3a41a6, #464eb8 45%, #6a55d8);
+}
+
+@keyframes float-y {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-float { animation: float-y 7s ease-in-out infinite; }
+.animate-fade-up { animation: fade-up 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-float,
+  .animate-fade-up { animation: none; }
+  html { scroll-behavior: auto; }
+}
+
+/* ---- Chat ---- */
+/* Wallpaper: our own tiled dot pattern (not WhatsApp's artwork). */
+.wa-wallpaper {
+  background-color: var(--wa-chat);
+  background-image: radial-gradient(var(--wa-doodle) 1.2px, transparent 1.2px),
+    radial-gradient(var(--wa-doodle) 1.2px, transparent 1.2px);
+  background-size: 28px 28px;
+  background-position: 0 0, 14px 14px;
+}
+
+/* Bubble tails like WhatsApp Web: only on the first bubble of a run. */
+.bubble-tail-in::before,
+.bubble-tail-out::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  width: 8px;
+  height: 13px;
+}
+.bubble-tail-in::before {
+  left: -8px;
+  background: var(--wa-in);
+  clip-path: polygon(100% 0, 0 0, 100% 100%);
+}
+.bubble-tail-out::before {
+  right: -8px;
+  background: var(--wa-out);
+  clip-path: polygon(0 0, 100% 0, 0 100%);
+}
+
+
+/* ---- Docs prose ---- */
+.prose-docs {
+  line-height: 1.7;
+}
+.prose-docs h1 { font-size: 2rem; font-weight: 700; margin: 0 0 1rem; letter-spacing: -0.02em; }
+.prose-docs h2 { font-size: 1.35rem; font-weight: 650; margin: 2.25rem 0 0.75rem; padding-top: 0.5rem; border-top: 1px solid var(--line); }
+.prose-docs h3 { font-size: 1.1rem; font-weight: 600; margin: 1.5rem 0 0.5rem; }
+.prose-docs p, .prose-docs ul, .prose-docs ol { margin: 0.75rem 0; }
+.prose-docs ul { list-style: disc; padding-left: 1.4rem; }
+.prose-docs ol { list-style: decimal; padding-left: 1.4rem; }
+.prose-docs li { margin: 0.25rem 0; }
+.prose-docs a { color: var(--accent-strong); text-decoration: underline; text-underline-offset: 3px; }
+.prose-docs code { font-family: var(--font-mono); font-size: 0.88em; background: var(--panel-2); padding: 0.1em 0.4em; border-radius: 5px; }
+.prose-docs pre { background: var(--code-bg); color: var(--code-fg); padding: 1rem 1.1rem; border-radius: 10px; overflow-x: auto; margin: 1rem 0; font-size: 0.85rem; line-height: 1.6; }
+.prose-docs pre code { background: none; padding: 0; color: inherit; }
+.prose-docs table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.92rem; }
+.prose-docs th, .prose-docs td { border: 1px solid var(--line); padding: 0.5rem 0.7rem; text-align: left; vertical-align: top; }
+.prose-docs th { background: var(--panel-2); font-weight: 600; }
+.prose-docs blockquote { border-left: 3px solid var(--accent); background: var(--panel-2); padding: 0.6rem 1rem; border-radius: 0 8px 8px 0; margin: 1rem 0; }
+
+/*
+ * Landing page extras. The paper palette now lives in the base tokens above, so
+ * the product UI and the landing page share it; .lp only adds the hatch colour.
+ */
+:root {
+  --hatch: rgba(55, 50, 47, 0.1);
+}
+:root[data-theme="dark"] {
+  --hatch: rgba(255, 255, 255, 0.07);
+}
+.lp-hatch {
+  background-image: repeating-linear-gradient(-45deg, var(--hatch) 0 1px, transparent 1px 7px);
+}
+.lp-glow {
+  background: radial-gradient(60% 60% at 50% 0%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 70%);
+}
+.lp-pill-shadow {
+  box-shadow: 0 0 0 1px var(--line), 0 1px 2px rgba(55, 50, 47, 0.06);
+}
+.lp-frame-shadow {
+  box-shadow: 0 0 0 1px var(--line), 0 24px 60px -24px rgba(55, 50, 47, 0.25);
+}
+
+/* Scrolling still works; the scrollbars are just hidden everywhere. */
+* {
+  scrollbar-width: none;
+}
+*::-webkit-scrollbar {
+  display: none;
+}

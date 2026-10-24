@@ -1,0 +1,13 @@
+{
+  "name": "messaging-gateway-platform",
+  "private": true,
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "gateway": "npm run start -w gateway",
+    "gateway:dev": "npm run dev -w gateway",
+    "web": "npm run dev -w web",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  }
+}

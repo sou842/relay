@@ -1,0 +1,12 @@
+node_modules/
+.env
+.env.local
+.env*.local
+*.log
+apps/gateway/data/
+research/sdk-pkgs/
+research/rea-out/
+.next/
+
+# Not part of this project: the cloned REA tool (own repository)
+rea/

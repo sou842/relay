@@ -1,0 +1,42 @@
+export const metadata = { title: "Self-hosting & access" };
+
+# Self-hosting & access
+
+## Requirements
+
+The gateway keeps a **permanent connection** to WhatsApp and stores session
+files on disk, so it needs an always-on machine with persistent storage.
+Serverless platforms (Vercel functions, Netlify, Cloudflare Workers, Lambda)
+cannot run it. The web app can run anywhere Next.js runs, as long as it can
+reach the gateway.
+
+| Option | Notes |
+|---|---|
+| Your own PC | Simplest; works while the PC is on |
+| Old laptop / Raspberry Pi | Cheap always-on box at home |
+| Oracle Cloud Always Free VM | Free, always on; needs card verification |
+| Google Cloud e2-micro | Free tier in some US regions; 1 GB RAM is enough |
+
+## Reaching it from anywhere
+
+Expose the **web app** (not the gateway) with Cloudflare Tunnel:
+
+```bash
+cloudflared tunnel --url http://localhost:3000
+```
+
+Then set `BETTER_AUTH_URL` to the tunnel URL and restart the web app.
+
+Expose the gateway only if scripts outside your machine need the HTTP API. In
+that case set `GATEWAY_PUBLIC_URL` so media links point to the public address,
+and treat every instance token like a password.
+
+## Data and backups
+
+| Data | Location |
+|---|---|
+| WhatsApp sessions, message history, media | `apps/gateway/data/` |
+| Users, sessions, instance ownership | MongoDB |
+
+Back up `apps/gateway/data/` to keep sessions and history; losing it means
+re-scanning QR codes.

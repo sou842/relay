@@ -69,7 +69,7 @@ export function AuthForm({ mode, next }: { mode: "sign-in" | "sign-up"; next?: s
 							type="button"
 							onClick={() => setShow((s) => !s)}
 							aria-label={show ? "Hide password" : "Show password"}
-							className="grid size-8 place-items-center rounded-lg text-muted transition hover:bg-panel-2 hover:text-fg"
+							className="cursor-pointer grid size-8 place-items-center rounded-lg text-muted transition hover:bg-panel-2 hover:text-fg"
 						>
 							{show ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
 						</button>

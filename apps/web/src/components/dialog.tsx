@@ -44,7 +44,7 @@ export function Dialog({
 					{title && (
 						<div className="mb-4 flex items-center justify-between gap-4">
 							<h2 className="text-lg font-semibold">{title}</h2>
-							<button type="button" onClick={onClose} aria-label="Close" className="grid size-8 place-items-center rounded-full text-muted hover:bg-panel-2">
+							<button type="button" onClick={onClose} aria-label="Close" className="cursor-pointer grid size-8 place-items-center rounded-full text-muted hover:bg-panel-2">
 								<X className="size-4" />
 							</button>
 						</div>

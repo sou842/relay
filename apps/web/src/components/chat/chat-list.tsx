@@ -47,10 +47,13 @@ export function ChatList({
 
 	return (
 		<section className="flex h-full min-h-0 flex-col border-r border-wa-line bg-wa-list">
-			<header className="flex h-[59px] shrink-0 items-center justify-between bg-wa-panel px-4">
+			<header className="flex h-16 shrink-0 items-center justify-between px-4">
 				<div className="flex min-w-0 items-center gap-3">
-					{selfId && <Avatar instanceId={instanceId} chatId={selfId} size={40} />}
-					<span className="truncate text-[15px] font-medium text-wa-text">{accountName}</span>
+					{selfId && <Avatar instanceId={instanceId} chatId={selfId} size={36} />}
+					<div className="min-w-0">
+						<h2 className="text-[22px] font-semibold leading-tight tracking-tight text-wa-text">Chats</h2>
+						<p className="truncate text-xs text-wa-muted">{accountName}</p>
+					</div>
 				</div>
 				<div className="relative flex items-center gap-1 text-wa-icon">
 					<IconButton label="New chat" onClick={onNewChat}>
@@ -69,7 +72,7 @@ export function ChatList({
 								<Link href="/app" className="flex items-center gap-3 px-6 py-2.5 hover:bg-wa-hover">
 									<ArrowLeft className="size-4 text-wa-icon" /> All instances
 								</Link>
-								<button type="button" onClick={toggleTheme} className="flex w-full items-center gap-3 px-6 py-2.5 text-left hover:bg-wa-hover">
+								<button type="button" onClick={toggleTheme} className="cursor-pointer flex w-full items-center gap-3 px-6 py-2.5 text-left hover:bg-wa-hover">
 									<Moon className="size-4 text-wa-icon dark:hidden" />
 									<Sun className="hidden size-4 text-wa-icon dark:block" /> Switch theme
 								</button>
@@ -79,8 +82,8 @@ export function ChatList({
 				</div>
 			</header>
 
-			<div className="shrink-0 px-3 pb-2 pt-2">
-				<div className="flex h-9 items-center gap-3 rounded-lg bg-wa-panel px-3">
+			<div className="shrink-0 px-3 pb-2">
+				<div className="flex h-10 items-center gap-3 rounded-lg bg-wa-panel px-3 ring-accent/40 transition focus-within:ring-2">
 					<Search className="size-4 shrink-0 text-wa-icon" />
 					<input
 						value={query}
@@ -89,7 +92,7 @@ export function ChatList({
 						className="min-w-0 flex-1 bg-transparent text-sm text-wa-text outline-none placeholder:text-wa-muted"
 					/>
 					{query && (
-						<button type="button" aria-label="Clear search" onClick={() => setQuery("")} className="text-wa-icon">
+						<button type="button" aria-label="Clear search" onClick={() => setQuery("")} className="cursor-pointer text-wa-icon">
 							<X className="size-4" />
 						</button>
 					)}
@@ -101,8 +104,8 @@ export function ChatList({
 							type="button"
 							onClick={() => setFilter(f)}
 							className={cn(
-								"rounded-full px-3 py-1 text-[13px] transition",
-								filter === f ? "bg-accent/15 font-medium text-accent-strong" : "bg-wa-panel text-wa-muted hover:bg-wa-active",
+								"cursor-pointer rounded-full border px-3 py-1 text-[13px] transition",
+								filter === f ? "border-transparent bg-accent/15 font-medium text-accent-strong" : "border-wa-line text-wa-muted hover:bg-wa-hover",
 							)}
 						>
 							{f === "all" ? "All" : f === "unread" ? "Unread" : "Groups"}
@@ -161,12 +164,12 @@ function ChatRow({
 			<button
 				type="button"
 				onClick={onClick}
-				className={cn("flex w-full items-center gap-3 pl-3 text-left transition-colors", active ? "bg-wa-active" : "hover:bg-wa-hover")}
+				className={cn("cursor-pointer flex w-full items-center gap-3 pl-3 text-left transition-colors", active ? "bg-wa-active" : "hover:bg-wa-hover")}
 			>
 				<Avatar instanceId={instanceId} chatId={chat.id} size={49} />
 				<div className="min-w-0 flex-1 border-b border-wa-line py-3 pr-4">
 					<div className="flex items-baseline justify-between gap-2">
-						<span className="truncate text-[17px] text-wa-text">{title}</span>
+						<span className={cn("truncate text-[16px] text-wa-text", unread && "font-semibold")}>{title}</span>
 						{chat.lastMessageTime ? (
 							<span className={cn("shrink-0 text-xs", unread ? "font-medium text-wa-badge" : "text-wa-muted")}>{listStamp(chat.lastMessageTime)}</span>
 						) : null}
@@ -205,7 +208,7 @@ export function IconButton({ label, onClick, children, active }: { label: string
 			title={label}
 			aria-label={label}
 			onClick={onClick}
-			className={cn("grid size-10 place-items-center rounded-full transition-colors hover:bg-black/5 dark:hover:bg-white/10", active && "bg-black/10 dark:bg-white/10")}
+			className={cn("cursor-pointer grid size-10 place-items-center rounded-full transition-colors hover:bg-black/5 dark:hover:bg-white/10", active && "bg-black/10 dark:bg-white/10")}
 		>
 			{children}
 		</button>

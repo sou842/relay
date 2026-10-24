@@ -307,7 +307,7 @@ function CreateForm({ onClose, onImport }: { onClose: () => void; onImport: () =
 					<Input name="name" required maxLength={60} placeholder="My WhatsApp" autoFocus />
 				</Field>
 				<div className="flex items-center justify-between gap-2">
-					<button type="button" onClick={onImport} className="text-sm font-medium text-accent-strong hover:underline">
+					<button type="button" onClick={onImport} className="cursor-pointer text-sm font-medium text-accent-strong hover:underline">
 						Import existing
 					</button>
 					<div className="flex gap-2">

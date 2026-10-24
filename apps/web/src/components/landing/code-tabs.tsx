@@ -22,7 +22,7 @@ export function CodeTabs({ tabs }: { tabs: CodeTab[] }) {
 						type="button"
 						aria-selected={t.id === active}
 						onClick={() => setActive(t.id)}
-						className={cn("rounded-t-lg px-3.5 py-2 text-xs font-medium transition", t.id === active ? "bg-white/10 text-white" : "text-white/50 hover:text-white/80")}
+						className={cn("cursor-pointer rounded-t-lg px-3.5 py-2 text-xs font-medium transition", t.id === active ? "bg-white/10 text-white" : "text-white/50 hover:text-white/80")}
 					>
 						{t.label}
 					</button>

@@ -65,7 +65,7 @@ export function DocsSidebar() {
 				</div>
 			</aside>
 
-			<button type="button" aria-label="Open navigation" onClick={() => setOpen(true)} className="grid size-9 place-items-center rounded-lg text-muted transition hover:bg-panel-2 hover:text-fg lg:hidden">
+			<button type="button" aria-label="Open navigation" onClick={() => setOpen(true)} className="cursor-pointer grid size-9 place-items-center rounded-lg text-muted transition hover:bg-panel-2 hover:text-fg lg:hidden">
 				<Menu className="size-5" />
 			</button>
 			{open && (
@@ -74,7 +74,7 @@ export function DocsSidebar() {
 					<aside className="absolute inset-y-0 left-0 flex w-72 max-w-[85vw] flex-col border-r border-line bg-panel shadow-2xl">
 						<div className="flex h-14 shrink-0 items-center justify-between px-5">
 							<Logo />
-							<button type="button" aria-label="Close navigation" onClick={() => setOpen(false)} className="grid size-8 place-items-center rounded-lg text-muted hover:bg-panel-2 hover:text-fg">
+							<button type="button" aria-label="Close navigation" onClick={() => setOpen(false)} className="cursor-pointer grid size-8 place-items-center rounded-lg text-muted hover:bg-panel-2 hover:text-fg">
 								<X className="size-5" />
 							</button>
 						</div>

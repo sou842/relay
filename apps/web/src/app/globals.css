@@ -139,6 +139,34 @@
   --font-mono: var(--font-geist-mono), ui-monospace, Consolas, monospace;
 }
 
+/*
+ * Tailwind 4 resets buttons to cursor: default. Restore the pointer for every
+ * clickable control site-wide; disabled controls keep the default arrow.
+ */
+@layer base {
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [role="tab"],
+  [role="menuitem"],
+  [role="radio"],
+  [role="switch"],
+  [role="option"],
+  summary,
+  select,
+  label:has(input[type="checkbox"], input[type="radio"]),
+  input[type="checkbox"],
+  input[type="radio"],
+  input[type="file"],
+  input[type="color"],
+  input[type="range"] {
+    cursor: pointer;
+  }
+  button:disabled,
+  [aria-disabled="true"] {
+    cursor: not-allowed;
+  }
+}
+
 html,
 body {
   background: var(--bg);

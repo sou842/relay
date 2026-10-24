@@ -86,7 +86,7 @@ export function ForwardDialog({
 							<button
 								type="button"
 								onClick={() => setPicked(on ? picked.filter((x) => x !== c.id) : [...picked, c.id].slice(-5))}
-								className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-panel-2"
+								className="cursor-pointer flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-panel-2"
 							>
 								<span className={cn("grid size-5 place-items-center rounded border-2", on ? "border-accent bg-accent text-white" : "border-muted")}>{on && <Check className="size-3.5" />}</span>
 								<Avatar instanceId={instanceId} chatId={c.id} size={36} />
@@ -135,19 +135,19 @@ export function PollDialog({ open, onClose, onSend }: { open: boolean; onClose: 
 						<div key={i} className="flex items-center gap-2">
 							<Input value={o} onChange={(e) => setOptions(options.map((x, j) => (j === i ? e.target.value : x)))} placeholder={`Option ${i + 1}`} maxLength={100} />
 							{options.length > 2 && (
-								<button type="button" aria-label="Remove option" onClick={() => setOptions(options.filter((_, j) => j !== i))} className="text-muted">
+								<button type="button" aria-label="Remove option" onClick={() => setOptions(options.filter((_, j) => j !== i))} className="cursor-pointer text-muted">
 									<X className="size-4" />
 								</button>
 							)}
 						</div>
 					))}
 					{options.length < 12 && (
-						<button type="button" onClick={() => setOptions([...options, ""])} className="flex items-center gap-1.5 justify-self-start text-sm font-medium text-accent-strong">
+						<button type="button" onClick={() => setOptions([...options, ""])} className="cursor-pointer flex items-center gap-1.5 justify-self-start text-sm font-medium text-accent-strong">
 							<Plus className="size-4" /> Add option
 						</button>
 					)}
 				</div>
-				<label className="flex items-center justify-between text-sm">
+				<label className="flex cursor-pointer items-center justify-between text-sm">
 					Allow multiple answers
 					<input type="checkbox" checked={multiple} onChange={(e) => setMultiple(e.target.checked)} className="size-4 accent-[var(--accent)]" />
 				</label>

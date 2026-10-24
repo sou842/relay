@@ -134,10 +134,10 @@ export function Conversation({
 			}}
 		>
 			<header className="flex h-[59px] shrink-0 items-center gap-3 border-l border-wa-line bg-wa-panel px-4">
-				<button type="button" onClick={onBack} aria-label="Back" className="text-wa-icon md:hidden">
+				<button type="button" onClick={onBack} aria-label="Back" className="cursor-pointer text-wa-icon md:hidden">
 					<ArrowLeft className="size-5" />
 				</button>
-				<button type="button" onClick={onToggleInfo} className="flex min-w-0 flex-1 items-center gap-3 text-left">
+				<button type="button" onClick={onToggleInfo} className="cursor-pointer flex min-w-0 flex-1 items-center gap-3 text-left">
 					<Avatar instanceId={instanceId} chatId={chatId} size={40} />
 					<span className="min-w-0">
 						<span className="block truncate text-[16px] text-wa-text">{title}</span>
@@ -204,7 +204,7 @@ export function Conversation({
 					type="button"
 					aria-label="Scroll to latest"
 					onClick={() => scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: "smooth" })}
-					className="absolute bottom-24 right-5 z-10 grid size-11 place-items-center rounded-full bg-wa-list text-wa-icon shadow-lg"
+					className="cursor-pointer absolute bottom-24 right-5 z-10 grid size-11 place-items-center rounded-full bg-wa-list text-wa-icon shadow-lg"
 				>
 					<ChevronDown className="size-6" />
 					{newBelow > 0 && (

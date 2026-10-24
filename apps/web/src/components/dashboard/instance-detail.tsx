@@ -130,7 +130,7 @@ export function InstanceDetail({ instance }: { instance: InstanceSummary }) {
 							aria-selected={tab === id}
 							onClick={() => selectTab(id)}
 							className={cn(
-								"relative flex shrink-0 items-center gap-2 px-3 py-3 text-sm transition",
+								"cursor-pointer relative flex shrink-0 items-center gap-2 px-3 py-3 text-sm transition",
 								tab === id ? "font-medium text-fg" : "text-muted hover:text-fg",
 								id === "danger" && tab !== id && "hover:text-danger",
 							)}
@@ -180,7 +180,7 @@ function RenameButton({ instanceId, name, onRenamed }: { instanceId: string; nam
 	const [open, setOpen] = useState(false);
 	return (
 		<>
-			<button type="button" onClick={() => setOpen(true)} aria-label="Rename" className="grid size-8 shrink-0 place-items-center rounded-lg text-muted hover:bg-panel-2 hover:text-fg">
+			<button type="button" onClick={() => setOpen(true)} aria-label="Rename" className="cursor-pointer grid size-8 shrink-0 place-items-center rounded-lg text-muted hover:bg-panel-2 hover:text-fg">
 				<Pencil className="size-4" />
 			</button>
 			<Dialog open={open} onClose={() => setOpen(false)} title="Rename instance">
@@ -270,7 +270,7 @@ function LinkCard({ instanceId, state }: { instanceId: string; state: string }) 
 							{code && <div className="rounded-xl bg-panel-2 p-4 text-center font-mono text-3xl font-semibold tracking-[0.3em]">{code}</div>}
 						</form>
 					)}
-					<button type="button" className="mt-6 text-sm font-medium text-accent-strong hover:underline" onClick={() => setMode(mode === "qr" ? "code" : "qr")}>
+					<button type="button" className="cursor-pointer mt-6 text-sm font-medium text-accent-strong hover:underline" onClick={() => setMode(mode === "qr" ? "code" : "qr")}>
 						{mode === "qr" ? "Link with phone number instead" : "Use QR code instead"}
 					</button>
 				</div>
@@ -361,7 +361,7 @@ function CopyButton({ value, label = "Copy" }: { value: string; label?: string }
 		<button
 			type="button"
 			aria-label={label}
-			className="grid size-8 shrink-0 place-items-center rounded-lg text-muted hover:bg-panel-2 hover:text-fg"
+			className="cursor-pointer grid size-8 shrink-0 place-items-center rounded-lg text-muted hover:bg-panel-2 hover:text-fg"
 			onClick={async () => {
 				await navigator.clipboard.writeText(value);
 				setDone(true);
@@ -423,7 +423,7 @@ function CredentialsCard({ instanceId, urlPrefix }: { instanceId: string; urlPre
 						<dd className={row}>
 							<span className="truncate">{reveal ? cred.apiTokenInstance : masked}</span>
 							<span className="flex">
-								<button type="button" aria-label={reveal ? "Hide" : "Show"} onClick={() => setReveal(!reveal)} className="grid size-8 place-items-center rounded-lg text-muted hover:bg-panel hover:text-fg">
+								<button type="button" aria-label={reveal ? "Hide" : "Show"} onClick={() => setReveal(!reveal)} className="cursor-pointer grid size-8 place-items-center rounded-lg text-muted hover:bg-panel hover:text-fg">
 									{reveal ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
 								</button>
 								<CopyButton value={cred.apiTokenInstance} />

@@ -32,7 +32,7 @@ export function SecurityForm() {
 				<Field label="New password" hint="At least 8 characters.">
 					<Input type="password" autoComplete="new-password" minLength={8} value={next} onChange={(e) => setNext(e.target.value)} required />
 				</Field>
-				<label className="flex items-center gap-2 text-sm">
+				<label className="flex cursor-pointer items-center gap-2 text-sm">
 					<input type="checkbox" checked={others} onChange={(e) => setOthers(e.target.checked)} className="size-4 accent-[var(--accent)]" />
 					Sign out of my other devices
 				</label>

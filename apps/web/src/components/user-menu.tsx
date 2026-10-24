@@ -42,7 +42,7 @@ export function UserMenu({ name, email, compact = false }: { name: string; email
 				aria-expanded={open}
 				onClick={() => setOpen((o) => !o)}
 				title={compact ? name || email : undefined}
-				className={cn("flex w-full items-center rounded-xl p-2 text-left transition hover:bg-panel-2", compact ? "justify-center" : "gap-3")}
+				className={cn("cursor-pointer flex w-full items-center rounded-xl p-2 text-left transition hover:bg-panel-2", compact ? "justify-center" : "gap-3")}
 			>
 				<span className="grid size-9 shrink-0 place-items-center rounded-full bg-accent text-sm font-medium text-accent-fg">{initial}</span>
 				{!compact && (
@@ -68,7 +68,7 @@ export function UserMenu({ name, email, compact = false }: { name: string; email
 								aria-checked={theme === id}
 								title={label}
 								onClick={() => setThemePref(id)}
-								className={cn("flex items-center justify-center gap-1 rounded-lg py-1.5 text-xs transition", theme === id ? "bg-panel font-medium shadow-sm" : "text-muted hover:text-fg")}
+								className={cn("cursor-pointer flex items-center justify-center gap-1 rounded-lg py-1.5 text-xs transition", theme === id ? "bg-panel font-medium shadow-sm" : "text-muted hover:text-fg")}
 							>
 								<Icon className="size-3.5" /> {label}
 							</button>
@@ -78,7 +78,7 @@ export function UserMenu({ name, email, compact = false }: { name: string; email
 					<button
 						type="button"
 						role="menuitem"
-						className={cn(item, "text-danger")}
+						className={cn(item, "cursor-pointer text-danger")}
 						onClick={async () => {
 							await signOut();
 							router.push("/sign-in");

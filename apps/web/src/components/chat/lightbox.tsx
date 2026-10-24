@@ -27,7 +27,7 @@ export function Lightbox({ message, title, onClose }: { message: Message; title:
 							<Download className="size-5" />
 						</a>
 					)}
-					<button type="button" onClick={onClose} aria-label="Close" className="grid size-10 place-items-center rounded-full hover:bg-black/5 dark:hover:bg-white/10">
+					<button type="button" onClick={onClose} aria-label="Close" className="cursor-pointer grid size-10 place-items-center rounded-full hover:bg-black/5 dark:hover:bg-white/10">
 						<X className="size-6" />
 					</button>
 				</div>

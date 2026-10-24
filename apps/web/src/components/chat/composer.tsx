@@ -166,7 +166,7 @@ export function Composer({
 							<div className="truncate text-[13px] text-wa-muted">{messagePreview((editing ?? replyTo)!)}</div>
 						</div>
 					</div>
-					<button type="button" aria-label="Cancel" onClick={editing ? onCancelEdit : onCancelReply} className="text-wa-icon">
+					<button type="button" aria-label="Cancel" onClick={editing ? onCancelEdit : onCancelReply} className="cursor-pointer text-wa-icon">
 						<X className="size-5" />
 					</button>
 				</div>
@@ -215,7 +215,7 @@ export function Composer({
 						setEmojiOpen(!emojiOpen);
 						setAttachOpen(false);
 					}}
-					className={cn("grid size-10 shrink-0 place-items-center rounded-full text-wa-icon hover:bg-black/5 dark:hover:bg-white/10", emojiOpen && "text-accent-strong")}
+					className={cn("cursor-pointer grid size-10 shrink-0 place-items-center rounded-full text-wa-icon hover:bg-black/5 dark:hover:bg-white/10", emojiOpen && "text-accent-strong")}
 				>
 					{emojiOpen ? <X className="size-6" /> : <Smile className="size-6" />}
 				</button>
@@ -228,7 +228,7 @@ export function Composer({
 								setAttachOpen(!attachOpen);
 								setEmojiOpen(false);
 							}}
-							className={cn("grid size-10 shrink-0 place-items-center rounded-full text-wa-icon hover:bg-black/5 dark:hover:bg-white/10", attachOpen && "bg-black/10 dark:bg-white/10")}
+							className={cn("cursor-pointer grid size-10 shrink-0 place-items-center rounded-full text-wa-icon hover:bg-black/5 dark:hover:bg-white/10", attachOpen && "bg-black/10 dark:bg-white/10")}
 						>
 							<Paperclip className="size-[22px] -rotate-45" />
 						</button>
@@ -237,7 +237,7 @@ export function Composer({
 								<button type="button" aria-hidden tabIndex={-1} className="fixed inset-0 z-30 cursor-default" onClick={() => setAttachOpen(false)} />
 								<div className="absolute bottom-12 left-0 z-40 w-52 rounded-2xl bg-wa-list py-2 text-[14.5px] text-wa-text shadow-xl ring-1 ring-black/5">
 									{ATTACH_ITEMS.map(({ kind, icon: Icon, color, label }) => (
-										<button key={kind} type="button" onClick={() => onAttach(kind)} className="flex w-full items-center gap-3 px-4 py-2.5 hover:bg-wa-hover">
+										<button key={kind} type="button" onClick={() => onAttach(kind)} className="cursor-pointer flex w-full items-center gap-3 px-4 py-2.5 hover:bg-wa-hover">
 											<Icon className="size-5" style={{ color }} />
 											{label}
 										</button>
@@ -351,14 +351,14 @@ function VoiceOrText({
 		const ss = String(elapsed % 60).padStart(2, "0");
 		return (
 			<div className="flex items-center justify-end gap-4 px-4 py-[9px]">
-				<button type="button" aria-label="Discard recording" onClick={() => stop(false)} className="text-wa-icon hover:text-danger">
+				<button type="button" aria-label="Discard recording" onClick={() => stop(false)} className="cursor-pointer text-wa-icon hover:text-danger">
 					<Trash2 className="size-5" />
 				</button>
 				<span className="flex items-center gap-2 text-[15px] text-wa-text">
 					<span className="size-2.5 animate-pulse rounded-full bg-red-500" />
 					{mm}:{ss}
 				</span>
-				<button type="button" aria-label="Send voice message" onClick={() => stop(true)} className="grid size-11 place-items-center rounded-full bg-accent text-white">
+				<button type="button" aria-label="Send voice message" onClick={() => stop(true)} className="cursor-pointer grid size-11 place-items-center rounded-full bg-accent text-white">
 					<Send className="size-5" />
 				</button>
 			</div>
@@ -369,11 +369,11 @@ function VoiceOrText({
 		<div className="flex items-end gap-1 px-3 py-[9px]">
 			{children}
 			{hasText || editing ? (
-				<button type="button" aria-label={editing ? "Save" : "Send"} onClick={onSendText} className="grid size-10 shrink-0 place-items-center rounded-full text-wa-icon hover:bg-black/5 dark:hover:bg-white/10">
+				<button type="button" aria-label={editing ? "Save" : "Send"} onClick={onSendText} className="cursor-pointer grid size-10 shrink-0 place-items-center rounded-full text-wa-icon hover:bg-black/5 dark:hover:bg-white/10">
 					{editing ? <Check className="size-6 text-accent-strong" /> : <Send className="size-6" />}
 				</button>
 			) : (
-				<button type="button" aria-label="Record voice message" onClick={start} className="grid size-10 shrink-0 place-items-center rounded-full text-wa-icon hover:bg-black/5 dark:hover:bg-white/10">
+				<button type="button" aria-label="Record voice message" onClick={start} className="cursor-pointer grid size-10 shrink-0 place-items-center rounded-full text-wa-icon hover:bg-black/5 dark:hover:bg-white/10">
 					<Mic className="size-6" />
 				</button>
 			)}
@@ -392,7 +392,7 @@ function FilePreview({ file, onCancel, onSend }: { file: File; onCancel: () => v
 	return (
 		<div className="absolute inset-x-0 bottom-0 z-20 flex h-[min(560px,80vh)] flex-col bg-wa-panel shadow-[0_-8px_24px_rgba(0,0,0,0.12)]">
 			<div className="flex h-14 items-center gap-4 px-4">
-				<button type="button" aria-label="Cancel" onClick={onCancel} className="text-wa-icon">
+				<button type="button" aria-label="Cancel" onClick={onCancel} className="cursor-pointer text-wa-icon">
 					<X className="size-6" />
 				</button>
 				<span className="truncate text-sm text-wa-text">{file.name}</span>
@@ -419,7 +419,7 @@ function FilePreview({ file, onCancel, onSend }: { file: File; onCancel: () => v
 					placeholder="Add a caption"
 					className="h-11 flex-1 rounded-lg bg-wa-input px-4 text-[15px] text-wa-text outline-none placeholder:text-wa-muted"
 				/>
-				<button type="button" aria-label="Send" onClick={() => onSend(caption)} className="grid size-12 place-items-center rounded-full bg-accent text-white shadow-lg">
+				<button type="button" aria-label="Send" onClick={() => onSend(caption)} className="cursor-pointer grid size-12 place-items-center rounded-full bg-accent text-white shadow-lg">
 					<Send className="size-5" />
 				</button>
 			</div>

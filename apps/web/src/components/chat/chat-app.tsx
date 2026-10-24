@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, WifiOff } from "lucide-react";
+import { Loader2, MessageSquarePlus, SlidersHorizontal, WifiOff } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -19,6 +19,7 @@ import { Conversation } from "./conversation";
 import { chatTitle, isGroup } from "./format";
 import { EmptyChatsArt } from "./icons";
 import { Lightbox } from "./lightbox";
+import { NavRail } from "./nav-rail";
 import type { MessageAction } from "./message-bubble";
 import type { Chat, Message, Presence } from "./types";
 
@@ -370,8 +371,10 @@ export function ChatApp({ instance }: { instance: InstanceSummary }) {
 	if (state !== "authorized" && state !== "starting") {
 		return (
 			<div className="wa-theme grid h-dvh place-items-center bg-wa-app p-6">
-				<div className="max-w-md rounded-2xl bg-wa-list p-8 text-center shadow-sm">
-					<WifiOff className="mx-auto size-10 text-wa-muted" />
+				<div className="w-full max-w-md rounded-2xl border border-wa-line bg-wa-list p-8 text-center shadow-sm">
+					<div className="mx-auto grid size-14 place-items-center rounded-full bg-wa-panel">
+						<WifiOff className="size-6 text-wa-muted" />
+					</div>
 					<h1 className="mt-4 text-xl font-medium text-wa-text">{state === "offline" ? "Gateway is offline" : "This instance isn't linked"}</h1>
 					<p className="mt-2 text-sm text-wa-muted">
 						{state === "offline" ? "Start the gateway (npm run gateway), then reload this page." : "Link your phone from the instance page, then come back."}
@@ -385,10 +388,12 @@ export function ChatApp({ instance }: { instance: InstanceSummary }) {
 	}
 
 	return (
-		<div className="wa-theme flex h-dvh bg-wa-app">
+		<div className="wa-theme relative flex h-dvh justify-center bg-wa-app">
+			<div className="relative flex h-full w-full max-w-[1700px] overflow-hidden bg-wa-list">
+			<NavRail instanceId={id} unread={chats.reduce((n, c) => n + (c.unreadCount > 0 ? 1 : 0), 0)} />
 			<div
 				className={cn(
-					"grid h-full w-full overflow-hidden bg-wa-list",
+					"grid h-full min-w-0 flex-1 overflow-hidden bg-wa-list",
 					infoOpen && selected ? "md:grid-cols-[minmax(300px,30%)_1fr] xl:grid-cols-[minmax(340px,30%)_1fr_minmax(320px,28%)]" : "md:grid-cols-[minmax(300px,30%)_1fr]",
 				)}
 			>
@@ -441,11 +446,22 @@ export function ChatApp({ instance }: { instance: InstanceSummary }) {
 							setEditing={setEditing}
 						/>
 					) : (
-						<div className="flex h-full flex-col items-center justify-center gap-4 border-b-[6px] border-accent bg-wa-panel px-8 text-center">
-							<EmptyChatsArt className="w-64" />
-							<h1 className="text-3xl font-light text-wa-text">Relay for {instance.name}</h1>
-							<p className="max-w-md text-sm text-wa-muted">Send and receive messages from your linked phone. Pick a chat on the left or start a new one.</p>
-							{!live && <p className="text-xs text-wa-muted">Connecting to live updates…</p>}
+						<div className="relative flex h-full flex-col items-center justify-center bg-wa-panel px-8 text-center">
+							<EmptyChatsArt className="w-72 max-w-full" />
+							<h1 className="mt-6 text-[28px] font-light tracking-tight text-wa-text">Relay for {instance.name}</h1>
+							<p className="mt-3 max-w-md text-sm leading-relaxed text-wa-muted">Send and receive messages from your linked phone. Pick a chat on the left or start a new one.</p>
+							<div className="mt-7 flex flex-wrap justify-center gap-3">
+								<button type="button" onClick={() => setDialog("new")} className="cursor-pointer inline-flex h-10 items-center gap-2 rounded-full bg-accent px-5 text-sm font-medium text-accent-fg transition hover:brightness-110">
+									<MessageSquarePlus className="size-4" /> New chat
+								</button>
+								<Link href={`/app/i/${id}`} className="inline-flex h-10 items-center gap-2 rounded-full border border-wa-line bg-wa-list px-5 text-sm font-medium text-wa-text transition hover:bg-wa-hover">
+									<SlidersHorizontal className="size-4" /> Instance settings
+								</Link>
+							</div>
+							<p className="absolute inset-x-0 bottom-8 flex items-center justify-center gap-1.5 text-xs text-wa-muted">
+								<span className={cn("size-1.5 rounded-full", live ? "bg-wa-badge" : "animate-pulse bg-amber-500")} />
+								{live ? "Live updates connected · relayed by your own gateway" : "Connecting to live updates…"}
+							</p>
 						</div>
 					)}
 				</div>
@@ -455,6 +471,7 @@ export function ChatApp({ instance }: { instance: InstanceSummary }) {
 						<ContactInfoPanel key={selected} instanceId={id} chatId={selected} title={title} selfId={selfId} nameFor={nameFor} onClose={() => setInfoOpen(false)} onOpenChat={openChat} />
 					</div>
 				)}
+			</div>
 			</div>
 
 			{lightbox && <Lightbox message={lightbox} title={lightbox.type === "outgoing" ? "You" : lightbox.senderName || title} onClose={() => setLightbox(null)} />}

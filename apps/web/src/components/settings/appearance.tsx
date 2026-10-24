@@ -46,7 +46,7 @@ export function Appearance() {
 						role="radio"
 						aria-checked={selected}
 						onClick={() => setThemePref(id)}
-						className={cn("rounded-xl border p-2.5 text-left transition", selected ? "border-accent ring-2 ring-accent/25" : "border-line hover:border-muted/50")}
+						className={cn("cursor-pointer rounded-xl border p-2.5 text-left transition", selected ? "border-accent ring-2 ring-accent/25" : "border-line hover:border-muted/50")}
 					>
 						<div className="relative h-20">
 							{id === "system" ? (

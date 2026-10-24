@@ -96,7 +96,7 @@ export function MessageBubble({
 							aria-label="Message menu"
 							onClick={() => setMenu(menu ? null : "actions")}
 							className={cn(
-								"absolute right-1 top-1 z-10 grid size-6 place-items-center rounded-full text-wa-icon opacity-0 transition group-hover:opacity-100 focus:opacity-100",
+								"cursor-pointer absolute right-1 top-1 z-10 grid size-6 place-items-center rounded-full text-wa-icon opacity-0 transition group-hover:opacity-100 focus:opacity-100",
 								out ? "bg-wa-out" : "bg-wa-in",
 								bare && "bg-black/30 text-white",
 							)}
@@ -117,7 +117,7 @@ export function MessageBubble({
 						<button
 							type="button"
 							onClick={() => onJump(m.quotedMessage!.stanzaId)}
-							className={cn("mb-1 block w-full overflow-hidden rounded-md border-l-4 bg-wa-quote px-2 py-1 text-left", visual && "mx-0 mt-0")}
+							className={cn("cursor-pointer mb-1 block w-full overflow-hidden rounded-md border-l-4 bg-wa-quote px-2 py-1 text-left", visual && "mx-0 mt-0")}
 							style={{ borderColor: senderColor(m.quotedMessage.participant ?? "") }}
 						>
 							<div className="text-[12.8px] font-medium" style={{ color: senderColor(m.quotedMessage.participant ?? "") }}>
@@ -135,7 +135,7 @@ export function MessageBubble({
 						type="button"
 						onClick={() => setMenu("react")}
 						title={m.reactions.map((r) => `${r.reaction} ${reactionLabel(r.senderId)}`).join("\n")}
-						className={cn("absolute -bottom-4 flex items-center gap-0.5 rounded-full bg-wa-in px-1.5 py-0.5 text-[13px] shadow ring-1 ring-black/5", out ? "right-2" : "left-2")}
+						className={cn("cursor-pointer absolute -bottom-4 flex items-center gap-0.5 rounded-full bg-wa-in px-1.5 py-0.5 text-[13px] shadow ring-1 ring-black/5", out ? "right-2" : "left-2")}
 					>
 						{[...new Set(m.reactions.map((r) => r.reaction))].slice(0, 3).join("")}
 						{m.reactions.length > 1 && <span className="ml-0.5 text-[11px] text-wa-muted">{m.reactions.length}</span>}
@@ -149,7 +149,7 @@ export function MessageBubble({
 						aria-label="React"
 						onClick={() => setMenu(menu === "react" ? null : "react")}
 						className={cn(
-							"absolute top-1/2 grid size-7 -translate-y-1/2 place-items-center rounded-full bg-black/5 text-wa-icon opacity-0 transition group-hover:opacity-100 dark:bg-white/10",
+							"cursor-pointer absolute top-1/2 grid size-7 -translate-y-1/2 place-items-center rounded-full bg-black/5 text-wa-icon opacity-0 transition group-hover:opacity-100 dark:bg-white/10",
 							out ? "-left-9" : "-right-9",
 						)}
 					>
@@ -166,7 +166,7 @@ export function MessageBubble({
 									<button
 										key={e}
 										type="button"
-										className="grid size-9 place-items-center rounded-full text-xl transition hover:scale-125 hover:bg-wa-hover"
+										className="cursor-pointer grid size-9 place-items-center rounded-full text-xl transition hover:scale-125 hover:bg-wa-hover"
 										onClick={() => {
 											setMenu(null);
 											onReact(m, e);
@@ -194,7 +194,7 @@ export function MessageBubble({
 										<button
 											key={action}
 											type="button"
-											className={cn("block w-full px-6 py-2 text-left hover:bg-wa-hover", action === "delete" && "text-danger")}
+											className={cn("cursor-pointer block w-full px-6 py-2 text-left hover:bg-wa-hover", action === "delete" && "text-danger")}
 											onClick={() => {
 												if (action === "react") return setMenu("react");
 												setMenu(null);
@@ -246,7 +246,7 @@ function Content({ m, meta, onOpenMedia }: { m: Message; meta: React.ReactNode; 
 		case "imageMessage":
 			return (
 				<div className="w-[min(330px,70vw)]">
-					<button type="button" onClick={() => onOpenMedia(m)} className="relative block w-full overflow-hidden rounded-md">
+					<button type="button" onClick={() => onOpenMedia(m)} className="cursor-pointer relative block w-full overflow-hidden rounded-md">
 						{/* eslint-disable-next-line @next/next/no-img-element */}
 						<img src={m.downloadUrl || thumb} alt={m.caption || "Photo"} loading="lazy" className="max-h-[330px] w-full bg-black/10 object-cover" />
 						{!m.caption && <span className="absolute bottom-0 right-0 rounded-tl-lg bg-gradient-to-t from-black/50 to-transparent px-2 pb-1 pt-4">{meta}</span>}
@@ -257,7 +257,7 @@ function Content({ m, meta, onOpenMedia }: { m: Message; meta: React.ReactNode; 
 		case "videoMessage":
 			return (
 				<div className="w-[min(330px,70vw)]">
-					<button type="button" onClick={() => onOpenMedia(m)} className="relative grid w-full place-items-center overflow-hidden rounded-md bg-black">
+					<button type="button" onClick={() => onOpenMedia(m)} className="cursor-pointer relative grid w-full place-items-center overflow-hidden rounded-md bg-black">
 						{thumb ? (
 							// eslint-disable-next-line @next/next/no-img-element
 							<img src={thumb} alt="" className="max-h-[330px] w-full object-cover opacity-90" />

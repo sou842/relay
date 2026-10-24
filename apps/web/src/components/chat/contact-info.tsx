@@ -44,7 +44,7 @@ export function ContactInfoPanel({
 	return (
 		<aside className="flex h-full min-h-0 flex-col border-l border-wa-line bg-wa-list">
 			<header className="flex h-[59px] shrink-0 items-center gap-6 bg-wa-panel px-5 text-wa-text">
-				<button type="button" aria-label="Close" onClick={onClose} className="text-wa-icon">
+				<button type="button" aria-label="Close" onClick={onClose} className="cursor-pointer text-wa-icon">
 					<X className="size-5" />
 				</button>
 				<span className="text-[16px]">{group ? "Group info" : "Contact info"}</span>

@@ -17,7 +17,7 @@ export function Hero({ signedIn }: { signedIn: boolean }) {
 
 				<div className="animate-fade-up mt-9 flex flex-wrap justify-center gap-3 [animation-delay:240ms]">
 					<Link
-						href={signedIn ? "/app" : "/sign-up"}
+						href={signedIn ? "/app" : "/sign-in"}
 						className="inline-flex h-12 items-center gap-2 rounded-full bg-accent px-7 text-[15px] font-medium text-accent-fg transition hover:brightness-110"
 					>
 						{signedIn ? "Open dashboard" : "Start for free"}

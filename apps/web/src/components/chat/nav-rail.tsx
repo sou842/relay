@@ -32,10 +32,10 @@ function RailItem({ href, label, active, children }: { href?: string; label: str
 	);
 }
 
-/** Slim app rail on the left of the chat (desktop only), like WhatsApp Web's, with Relay navigation. */
+/** Slim app rail on the left of the chat for tablet widths. From lg up the dashboard sidebar (collapsed to its rail) replaces it. */
 export function NavRail({ instanceId, unread }: { instanceId: string; unread: number }) {
 	return (
-		<nav aria-label="App" className="hidden w-16 shrink-0 flex-col items-center justify-between border-r border-wa-line bg-wa-panel py-3 md:flex">
+		<nav aria-label="App" className="hidden w-16 shrink-0 flex-col items-center justify-between border-r border-wa-line bg-wa-panel py-3 md:flex lg:hidden">
 			<div className="flex flex-col items-center gap-2">
 				<Link href="/app" aria-label="Relay dashboard" className="mb-2">
 					<LogoMark className="size-8" />

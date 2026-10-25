@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpen, ChevronLeft, ChevronRight, Layers, Menu, Settings, X } from "lucide-react";
+import { BookOpen, ChevronLeft, ChevronRight, Layers, Menu, MessageCircle, Settings, SlidersHorizontal, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -15,16 +15,28 @@ interface NavItem {
 	match: (p: string) => boolean;
 }
 
-const sections: { title: string; items: NavItem[] }[] = [
-	{
-		title: "Workspace",
+const workspace: { title: string; items: NavItem[] } = {
+	title: "Workspace",
+	items: [
+		{ href: "/app", label: "Instances", icon: Layers, match: (p) => p === "/app" },
+		{ href: "/docs", label: "Documentation", icon: BookOpen, match: () => false },
+		{ href: "/app/settings", label: "Settings", icon: Settings, match: (p) => p.startsWith("/app/settings") },
+	],
+};
+
+/** Links for the instance being viewed, so its overview and chat are one click apart. */
+function instanceSection(id: string): { title: string; items: NavItem[] } {
+	return {
+		title: "Instance",
 		items: [
-			{ href: "/app", label: "Instances", icon: Layers, match: (p) => p === "/app" || p.startsWith("/app/i/") },
-			{ href: "/docs", label: "Documentation", icon: BookOpen, match: () => false },
-			{ href: "/app/settings", label: "Settings", icon: Settings, match: (p) => p.startsWith("/app/settings") },
+			{ href: `/app/i/${id}`, label: "Overview", icon: SlidersHorizontal, match: (p) => p === `/app/i/${id}` },
+			{ href: `/app/i/${id}/chat`, label: "Chat", icon: MessageCircle, match: (p) => p.startsWith(`/app/i/${id}/chat`) },
 		],
-	}
-];
+	};
+}
+
+/** The chat fills the screen; the sidebar stays but shrinks to its icon rail. */
+const isChatPath = (p: string) => /^\/app\/i\/[^/]+\/chat(\/|$)/.test(p);
 
 const MIN_W = 208;
 const MAX_W = 380;
@@ -34,6 +46,8 @@ const STORAGE_KEY = "relay.sidebar";
 
 function SidebarContent({ name, email, onNavigate, collapsed = false }: { name: string; email: string; onNavigate?: () => void; collapsed?: boolean }) {
 	const pathname = usePathname();
+	const instanceId = /^\/app\/i\/([^/]+)/.exec(pathname)?.[1];
+	const sections = instanceId ? [workspace, instanceSection(instanceId)] : [workspace];
 	return (
 		<div className="flex h-full flex-col">
 			<div className={cn("flex h-16 shrink-0 items-center", collapsed ? "justify-center" : "px-5")}>
@@ -96,6 +110,7 @@ export function AppShell({ name, email, children }: { name: string; email: strin
 	const [dragging, setDragging] = useState(false);
 	const widthRef = useRef(DEFAULT_W);
 	const pathname = usePathname();
+	const inChat = isChatPath(pathname);
 
 	// Restore the saved layout after mount (keeps server and client markup identical on first render).
 	/* eslint-disable react-hooks/set-state-in-effect -- localStorage only exists on the client, so it can't seed initial state without a hydration mismatch */
@@ -127,6 +142,7 @@ export function AppShell({ name, email, children }: { name: string; email: strin
 
 	useEffect(() => {
 		const key = (e: KeyboardEvent) => {
+			if (inChat) return;
 			if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "b" && !e.shiftKey && !e.altKey) {
 				e.preventDefault();
 				toggle();
@@ -134,7 +150,7 @@ export function AppShell({ name, email, children }: { name: string; email: strin
 		};
 		document.addEventListener("keydown", key);
 		return () => document.removeEventListener("keydown", key);
-	}, [toggle]);
+	}, [toggle, inChat]);
 
 	function startResize(e: React.PointerEvent<HTMLDivElement>) {
 		e.preventDefault();
@@ -162,7 +178,9 @@ export function AppShell({ name, email, children }: { name: string; email: strin
 		persist(DEFAULT_W, false);
 	}
 
-	const sidebarW = collapsed ? RAIL_W : width;
+	// In the chat the rail is always compact; the saved width/collapsed preference is left alone.
+	const railOnly = collapsed || inChat;
+	const sidebarW = railOnly ? RAIL_W : width;
 
 	// Close the mobile drawer after navigating (adjusting state during render, not in an effect).
 	const [drawerPath, setDrawerPath] = useState(pathname);
@@ -181,8 +199,9 @@ export function AppShell({ name, email, children }: { name: string; email: strin
 		<div className={cn("min-h-screen bg-bg", dragging && "cursor-col-resize select-none")} style={{ "--sbw": `${sidebarW}px` } as React.CSSProperties}>
 			{/* Desktop sidebar */}
 			<aside className={cn("fixed inset-y-0 left-0 z-30 hidden w-[var(--sbw)] border-r border-line bg-panel lg:block", !dragging && "transition-[width] duration-200")}>
-				<SidebarContent name={name} email={email} collapsed={collapsed} />
+				<SidebarContent name={name} email={email} collapsed={railOnly} />
 
+				{!inChat && (
 				<button
 					type="button"
 					onClick={toggle}
@@ -192,7 +211,8 @@ export function AppShell({ name, email, children }: { name: string; email: strin
 				>
 					{collapsed ? <ChevronRight className="size-3.5" /> : <ChevronLeft className="size-3.5" />}
 				</button>
-				{!collapsed && (
+				)}
+				{!railOnly && (
 					<div
 						role="separator"
 						aria-orientation="vertical"
@@ -208,7 +228,7 @@ export function AppShell({ name, email, children }: { name: string; email: strin
 			</aside>
 
 			{/* Mobile top bar + drawer */}
-			<header className="sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-line bg-panel/90 px-4 backdrop-blur lg:hidden">
+			<header className={cn("sticky top-0 z-20 flex h-14 items-center gap-3 border-b border-line bg-panel/90 px-4 backdrop-blur lg:hidden", inChat && "hidden")}>
 				<button type="button" aria-label="Open menu" onClick={() => setOpen(true)} className="cursor-pointer grid size-9 place-items-center rounded-lg text-muted transition hover:bg-panel-2 hover:text-fg">
 					<Menu className="size-5" />
 				</button>
@@ -227,7 +247,7 @@ export function AppShell({ name, email, children }: { name: string; email: strin
 			)}
 
 			<main className={cn("lg:pl-[var(--sbw)]", !dragging && "transition-[padding] duration-200")}>
-				<div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-8">{children}</div>
+				{inChat ? children : <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-8">{children}</div>}
 			</main>
 		</div>
 	);

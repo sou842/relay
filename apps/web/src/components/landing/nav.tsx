@@ -36,13 +36,13 @@ export function LandingNav({ signedIn }: { signedIn: boolean }) {
 					<span className="flex items-center border-l border-line px-2">
 						<ThemeToggle />
 					</span>
-					{!signedIn && (
+					{/* {!signedIn && (
 						<Link href="/sign-in" className={`${cell} hidden border-l sm:flex`}>
 							Log in
 						</Link>
-					)}
+					)} */}
 					<Link
-						href={signedIn ? "/app" : "/sign-up"}
+						href={signedIn ? "/app" : "/sign-in"}
 						className="group flex items-center gap-2 bg-accent px-5 text-sm font-medium text-accent-fg transition hover:brightness-110 sm:px-7"
 					>
 						{signedIn ? "Dashboard" : "Get started"}

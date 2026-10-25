@@ -178,6 +178,11 @@ export class WhatsAppWorker implements ChannelWorker {
 				void this.start();
 			} else if (code === DisconnectReason.forbidden) {
 				this.setState("blocked");
+			} else if (code === DisconnectReason.connectionReplaced) {
+				// Another process opened this session (e.g. a second gateway on the same database).
+				// Reconnecting at once would make the two knock each other off in a loop.
+				this.log.warn({ instance: this.instanceId }, "session opened elsewhere; retrying in 2 minutes");
+				setTimeout(() => !this.stopped && void this.start(), 120_000);
 			} else {
 				const delay = code === DisconnectReason.restartRequired ? 0 : Math.min(30000, 1000 * 2 ** this.reconnectAttempts++);
 				setTimeout(() => !this.stopped && void this.start(), delay);

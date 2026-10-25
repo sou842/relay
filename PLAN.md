@@ -41,7 +41,7 @@ loads provider-specific capabilities (QR vs. phone code, polls, reactions, …).
 - [x] Contract research with REA ([research/green-api-contract.md](research/green-api-contract.md))
 - [x] Gateway core: instances, WhatsApp worker, send queue, notifications, webhooks, journal, uploads
 - [x] Official SDK compat check (9/9 unauthenticated calls), self-send verified
-- [x] Prototype UI at gateway `/ui` (stays as a debugging console)
+- [x] Prototype UI at gateway `/ui` (removed once the web app replaced it)
 
 ### 1. Monorepo + gateway platform features ✅
 - [x] npm workspaces: `apps/gateway`, `apps/web`

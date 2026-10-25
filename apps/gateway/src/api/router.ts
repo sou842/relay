@@ -1,5 +1,3 @@
-import fs from "node:fs";
-import path from "node:path";
 import multipart from "@fastify/multipart";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { config } from "../config.ts";
@@ -15,13 +13,6 @@ import { ApiError } from "./errors.ts";
 // GREEN-API URL scheme: /{waInstance|tgInstance}{id}/{method}/{token}[/{extra}]
 // Method names are matched case-insensitively (v1 SDK sends "ForwardMessages").
 // Extension: GET /{prefix}Instance{id}/events/{token} is a live SSE feed.
-
-const publicDir = path.resolve(import.meta.dirname, "../../public");
-const uiFiles: Record<string, string> = {
-	"": "text/html; charset=utf-8",
-	"app.js": "text/javascript; charset=utf-8",
-	"style.css": "text/css; charset=utf-8",
-};
 
 type Params = { instancePath: string; method: string; token: string; extra?: string };
 
@@ -130,25 +121,9 @@ export async function registerRoutes(app: FastifyInstance, manager: InstanceMana
 			.send(file.stream);
 	});
 
-	// Debug console: static files from apps/gateway/public.
 	// Liveness check for the host and uptime pingers (keeps free plans from sleeping).
 	app.get("/health", async () => ({ ok: true }));
-
-	app.get("/", (_req, reply) => reply.redirect("/ui/"));
-	app.get("/ui", (_req, reply) => reply.redirect("/ui/"));
-	app.get<{ Params: { "*": string } }>("/ui/*", async (req, reply) => {
-		const name = req.params["*"];
-		const type = uiFiles[name];
-		if (type === undefined) throw new ApiError(404, "Not found");
-		const file = path.join(publicDir, name || "index.html");
-		return reply
-			.type(type)
-			.header("Cache-Control", "no-cache")
-			.header("X-Content-Type-Options", "nosniff")
-			.header("X-Frame-Options", "DENY")
-			.header("Content-Security-Policy", "default-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'")
-			.send(fs.createReadStream(file));
-	});
+	app.get("/", async () => ({ name: "relay-gateway", ok: true }));
 
 	app.setErrorHandler((err: Error & { statusCode?: number }, req, reply) => {
 		const status = err instanceof ApiError ? err.statusCode : (err.statusCode ?? 500);

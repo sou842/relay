@@ -116,6 +116,7 @@ export function Conversation({
 
 	return (
 		<section
+			data-private
 			className="relative flex h-full min-h-0 flex-col"
 			onDragOver={(e) => {
 				if (e.dataTransfer.types.includes("Files")) {

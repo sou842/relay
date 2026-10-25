@@ -42,7 +42,7 @@ export function ContactInfoPanel({
 	const error = ((group ? groupQuery.error : contactQuery.error) as Error | undefined)?.message ?? null;
 
 	return (
-		<aside className="flex h-full min-h-0 flex-col border-l border-wa-line bg-wa-list">
+		<aside data-private className="flex h-full min-h-0 flex-col border-l border-wa-line bg-wa-list">
 			<header className="flex h-[59px] shrink-0 items-center gap-6 bg-wa-panel px-5 text-wa-text">
 				<button type="button" aria-label="Close" onClick={onClose} className="cursor-pointer text-wa-icon">
 					<X className="size-5" />

@@ -61,8 +61,7 @@ export function Features() {
 						<div className="w-fit max-w-[80%] rounded-2xl rounded-tl-sm bg-panel-2 px-3.5 py-2">Can you resend the invoice?</div>
 						<div className="relative ml-auto w-fit max-w-[85%] rounded-2xl rounded-tr-sm bg-accent px-3.5 py-2 text-accent-fg">
 							<div className="mb-1 rounded-md border-l-2 border-white/60 bg-white/10 px-2 py-1 text-[11px] text-white/80">Can you resend the invoice?</div>
-							Sent! Check your inbox 📨
-							<span className="absolute -bottom-3 left-2 rounded-full border border-line bg-panel px-1.5 text-xs shadow-sm">👍</span>
+							Sent! Check your inbox
 						</div>
 					</div>
 				</Card>

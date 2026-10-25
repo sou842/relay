@@ -1,6 +1,9 @@
 import createMDX from "@next/mdx";
 import type { NextConfig } from "next";
 
+// Where the error tracker (src/instrumentation-client.ts) sends events.
+const trackerOrigin = new URL(process.env.NEXT_PUBLIC_ERROR_TRACKER_ENDPOINT ?? "https://monitoringsystem-backend.vercel.app/api/v1/events").origin;
+
 const securityHeaders = [
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "X-Frame-Options", value: "DENY" },
@@ -19,7 +22,7 @@ const securityHeaders = [
       "img-src 'self' data: blob: https:",
       "media-src 'self' blob:",
       "font-src 'self' data:",
-      "connect-src 'self'",
+      `connect-src 'self' ${trackerOrigin}`,
       "object-src 'none'",
       "base-uri 'self'",
       "form-action 'self'",

@@ -12,6 +12,7 @@
     "@mdx-js/loader": "3.1.1",
     "@mdx-js/react": "3.1.1",
     "@next/mdx": "16.4.3",
+    "@sourav732/error-tracker-js": "0.6.1",
     "better-auth": "1.7.12",
     "clsx": "2.1.1",
     "emoji-picker-react": "5.1.1",

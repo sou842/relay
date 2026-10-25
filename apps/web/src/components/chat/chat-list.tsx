@@ -46,7 +46,7 @@ export function ChatList({
 	}, [chats, filter, query, selfId]);
 
 	return (
-		<section className="flex h-full min-h-0 flex-col border-r border-wa-line bg-wa-list">
+		<section data-private className="flex h-full min-h-0 flex-col border-r border-wa-line bg-wa-list">
 			<header className="flex h-16 shrink-0 items-center justify-between px-4">
 				<div className="flex min-w-0 items-center gap-3">
 					{selfId && <Avatar instanceId={instanceId} chatId={selfId} size={36} />}

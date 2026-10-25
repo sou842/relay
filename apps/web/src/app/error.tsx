@@ -2,6 +2,7 @@
 
 import { RotateCw } from "lucide-react";
 import Link from "next/link";
+import ErrorTracker from "@sourav732/error-tracker-js";
 import { useEffect } from "react";
 import { LogoMark } from "@/components/logo";
 import { buttonClass } from "@/components/ui";
@@ -9,6 +10,8 @@ import { buttonClass } from "@/components/ui";
 export default function Error({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
 	useEffect(() => {
 		console.error(error);
+		// React's error boundary swallows render errors before the browser's global handler sees them.
+		ErrorTracker.captureError(error, { digest: error.digest });
 	}, [error]);
 
 	return (

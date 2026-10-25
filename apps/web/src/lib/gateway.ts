@@ -42,7 +42,8 @@ export interface GatewayInstance {
 async function admin<T>(path: string, init?: RequestInit): Promise<T> {
 	const res = await fetch(`${GATEWAY_URL}/admin${path}`, {
 		...init,
-		headers: { Authorization: `Bearer ${ADMIN_KEY}`, "Content-Type": "application/json", ...init?.headers },
+		// Fastify rejects an empty body declared as JSON, so the header goes only with a body (not on GET/DELETE).
+		headers: { Authorization: `Bearer ${ADMIN_KEY}`, ...(init?.body ? { "Content-Type": "application/json" } : {}), ...init?.headers },
 		cache: "no-store",
 	}).catch(() => {
 		throw new GatewayError(502, "Gateway is not reachable. Is it running? (npm run gateway)");

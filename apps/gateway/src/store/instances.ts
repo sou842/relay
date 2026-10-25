@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { db } from "../db.ts";
+import { collections, mediaBucket, type InstanceDoc } from "../db.ts";
 import type { Settings } from "../contract/instance.ts";
 
 export type InstanceType = "whatsapp" | "telegram";
@@ -36,64 +36,105 @@ export const defaultSettings: Required<Omit<Settings, "wid">> = {
 // GREEN-API ids are 10-digit numbers whose prefix encodes the instance type.
 const idBase: Record<InstanceType, number> = { whatsapp: 1101000000, telegram: 2201000000 };
 
-type Row = { id: number; token: string; type: InstanceType; name: string | null; settings: string; created_at: number };
+// Instance records are read on every API call and every settings check, so
+// they are cached in memory and written through to MongoDB. The gateway is a
+// single process, so the cache is authoritative; findInstance() picks up
+// instances created elsewhere (the CLI) on first use.
+const cache = new Map<number, InstanceRecord>();
 
-function fromRow(row: Row): InstanceRecord {
+function fromDoc(doc: InstanceDoc): InstanceRecord {
 	return {
-		id: row.id,
-		token: row.token,
-		type: row.type,
-		name: row.name,
-		settings: { ...defaultSettings, ...JSON.parse(row.settings) },
-		createdAt: row.created_at,
+		id: doc._id,
+		token: doc.token,
+		type: doc.type,
+		name: doc.name,
+		settings: { ...defaultSettings, ...doc.settings },
+		createdAt: doc.createdAt,
 	};
 }
 
-export function createInstance(type: InstanceType, name?: string): InstanceRecord {
-	const { maxId } = db
-		.prepare("SELECT MAX(id) AS maxId FROM instances WHERE type = ?")
-		.get(type) as { maxId: number | null };
-	const id = (maxId ?? idBase[type]) + 1;
-	const token = crypto.randomBytes(25).toString("hex");
-	db.prepare("INSERT INTO instances (id, token, type, name, created_at) VALUES (?, ?, ?, ?, ?)").run(
-		id,
-		token,
-		type,
-		name ?? null,
-		Date.now(),
-	);
-	return getInstance(id)!;
+/** Fills the cache; call once at startup. */
+export async function loadInstances(): Promise<void> {
+	cache.clear();
+	for (const doc of await collections.instances.find().sort({ _id: 1 }).toArray()) cache.set(doc._id, fromDoc(doc));
+}
+
+export async function createInstance(type: InstanceType, name?: string): Promise<InstanceRecord> {
+	// The unique _id settles races between processes; retry with the next id.
+	for (let attempt = 0; attempt < 5; attempt++) {
+		const last = await collections.instances.find({ type }).sort({ _id: -1 }).limit(1).next();
+		const doc: InstanceDoc = {
+			_id: (last?._id ?? idBase[type]) + 1,
+			token: crypto.randomBytes(25).toString("hex"),
+			type,
+			name: name ?? null,
+			settings: {},
+			createdAt: Date.now(),
+		};
+		try {
+			await collections.instances.insertOne(doc);
+		} catch (err) {
+			if ((err as { code?: number }).code === 11000) continue;
+			throw err;
+		}
+		const record = fromDoc(doc);
+		cache.set(record.id, record);
+		return record;
+	}
+	throw new Error("Could not allocate an instance id");
 }
 
 export function getInstance(id: number): InstanceRecord | undefined {
-	const row = db.prepare("SELECT * FROM instances WHERE id = ?").get(id) as Row | undefined;
-	return row && fromRow(row);
+	return cache.get(id);
+}
+
+/** Cache first, then the database (for instances created by another process). */
+export async function findInstance(id: number): Promise<InstanceRecord | undefined> {
+	const hit = cache.get(id);
+	if (hit || !Number.isSafeInteger(id)) return hit;
+	const doc = await collections.instances.findOne({ _id: id });
+	if (!doc) return undefined;
+	const record = fromDoc(doc);
+	cache.set(id, record);
+	return record;
 }
 
 export function listInstances(): InstanceRecord[] {
-	return (db.prepare("SELECT * FROM instances ORDER BY id").all() as Row[]).map(fromRow);
+	return [...cache.values()].sort((a, b) => a.id - b.id);
 }
 
-export function deleteInstance(id: number): void {
-	db.prepare("DELETE FROM instances WHERE id = ?").run(id);
-	for (const table of ["notifications", "messages", "chat_state", "reactions"]) {
-		db.prepare(`DELETE FROM ${table} WHERE instance_id = ?`).run(id);
+/** Removes the instance and everything stored for it (journal, queue, session keys, media). */
+export async function deleteInstance(id: number): Promise<void> {
+	cache.delete(id);
+	await Promise.all([
+		collections.instances.deleteOne({ _id: id }),
+		collections.notifications.deleteMany({ instanceId: id }),
+		collections.messages.deleteMany({ instanceId: id }),
+		collections.chatState.deleteMany({ instanceId: id }),
+		collections.reactions.deleteMany({ instanceId: id }),
+		collections.auth.deleteMany({ instanceId: id }),
+	]);
+	for await (const file of mediaBucket.find({ "metadata.instanceId": id }, { projection: { _id: 1 } })) {
+		await mediaBucket.delete(file._id).catch(() => undefined);
 	}
 }
 
-export function updateSettings(id: number, patch: Settings): Settings {
-	const current = getInstance(id);
+export async function updateSettings(id: number, patch: Settings): Promise<Settings> {
+	const current = cache.get(id);
 	if (!current) throw new Error(`Instance ${id} not found`);
 	const allowed = Object.keys(defaultSettings);
 	const clean = Object.fromEntries(Object.entries(patch).filter(([k]) => allowed.includes(k)));
 	const next = { ...current.settings, ...clean };
-	db.prepare("UPDATE instances SET settings = ? WHERE id = ?").run(JSON.stringify(next), id);
+	await collections.instances.updateOne({ _id: id }, { $set: { settings: next } });
+	current.settings = next;
 	return next;
 }
 
-export function rotateToken(id: number): string {
+export async function rotateToken(id: number): Promise<string> {
 	const token = crypto.randomBytes(25).toString("hex");
-	db.prepare("UPDATE instances SET token = ? WHERE id = ?").run(token, id);
+	await collections.instances.updateOne({ _id: id }, { $set: { token } });
+	const current = cache.get(id);
+	if (current) current.token = token;
 	return token;
 }
 

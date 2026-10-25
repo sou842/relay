@@ -22,7 +22,7 @@ export const commonMethods: Record<string, MethodDef> = {
 	},
 	setSettings: {
 		verb: "POST",
-		handler: ({ instance, worker, body }) => {
+		handler: async ({ instance, worker, body }) => {
 			const { webhookUrl, webhookUrlToken, delaySendMessagesMilliseconds } = body;
 			if (webhookUrl !== undefined && webhookUrl !== "") {
 				if (typeof webhookUrl !== "string" || webhookUrl.length > 2048) throw badRequest("webhookUrl is malformed");
@@ -37,7 +37,7 @@ export const commonMethods: Record<string, MethodDef> = {
 				const n = Number(delaySendMessagesMilliseconds);
 				if (!Number.isInteger(n) || n < 500 || n > 600000) throw badRequest("delaySendMessagesMilliseconds must be an integer from 500 to 600000");
 			}
-			updateSettings(instance.id, body);
+			await updateSettings(instance.id, body);
 			worker.onSettingsChanged();
 			return { saveSettings: true };
 		},
@@ -52,7 +52,7 @@ export const commonMethods: Record<string, MethodDef> = {
 	},
 	updateApiToken: {
 		verb: "GET",
-		handler: ({ instance }) => ({ apiTokenInstance: rotateToken(instance.id) }),
+		handler: async ({ instance }) => ({ apiTokenInstance: await rotateToken(instance.id) }),
 	},
 
 	// ---- receiving
@@ -66,17 +66,17 @@ export const commonMethods: Record<string, MethodDef> = {
 	},
 	deleteNotification: {
 		verb: "DELETE",
-		handler: ({ instance, extra }) => {
+		handler: async ({ instance, extra }) => {
 			const receiptId = Number(extra);
 			if (!Number.isInteger(receiptId)) throw badRequest("receiptId is required after the token");
-			return { result: deleteNotification(instance.id, receiptId) };
+			return { result: await deleteNotification(instance.id, receiptId) };
 		},
 	},
-	getWebhooksCount: { verb: "GET", handler: ({ instance }) => ({ count: countNotifications(instance.id) }) },
+	getWebhooksCount: { verb: "GET", handler: async ({ instance }) => ({ count: await countNotifications(instance.id) }) },
 	clearWebhooksQueue: {
 		verb: "DELETE",
-		handler: ({ instance }) => {
-			clearNotifications(instance.id);
+		handler: async ({ instance }) => {
+			await clearNotifications(instance.id);
 			return { isCleared: true };
 		},
 	},
@@ -92,8 +92,8 @@ export const commonMethods: Record<string, MethodDef> = {
 	},
 	getMessage: {
 		verb: "POST",
-		handler: ({ instance, body }) => {
-			const msg = getMessage(instance.id, String(body.chatId ?? ""), String(body.idMessage ?? ""));
+		handler: async ({ instance, body }) => {
+			const msg = await getMessage(instance.id, String(body.chatId ?? ""), String(body.idMessage ?? ""));
 			if (!msg) throw new ApiError(404, "Message not found");
 			return msg;
 		},
@@ -111,10 +111,10 @@ export const commonMethods: Record<string, MethodDef> = {
 	// ---- files
 	uploadFile: {
 		verb: "POST",
-		handler: ({ instance, baseUrl, file, body }) => {
+		handler: async ({ instance, baseUrl, file, body }) => {
 			if (!file) throw badRequest("multipart field 'file' is required");
 			const name = body["GA-Filename"] || file.filename || "file";
-			return { urlFile: storeUpload(instance.id, baseUrl, file, name).urlFile };
+			return { urlFile: (await storeUpload(instance.id, baseUrl, file, name)).urlFile };
 		},
 	},
 };

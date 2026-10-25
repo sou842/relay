@@ -11,12 +11,14 @@
     "start": "node --env-file-if-exists=.env --import tsx src/index.ts",
     "dev": "node --env-file-if-exists=.env --watch --import tsx src/index.ts",
     "cli": "node --env-file-if-exists=.env --import tsx src/cli.ts",
+    "migrate:sqlite": "node --env-file-if-exists=.env --import tsx src/migrate-sqlite.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@fastify/multipart": "10.1.6",
     "baileys": "7.0.0-rc14",
     "fastify": "5.12.7",
+    "mongodb": "7.7.0",
     "pino": "10.4.0",
     "qrcode": "1.5.4"
   },

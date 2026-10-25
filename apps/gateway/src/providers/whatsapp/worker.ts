@@ -1,5 +1,3 @@
-import fs from "node:fs";
-import path from "node:path";
 import makeWASocket, {
 	Browsers,
 	BufferJSON,
@@ -8,7 +6,6 @@ import makeWASocket, {
 	fetchLatestBaileysVersion,
 	generateMessageIDV2,
 	isJidGroup,
-	useMultiFileAuthState,
 	type AnyMessageContent,
 	type ConnectionState,
 	type WAMessage,
@@ -19,14 +16,15 @@ import type { FastifyBaseLogger } from "fastify";
 import pino from "pino";
 import QRCode from "qrcode";
 import { config } from "../../config.ts";
-import type { InstanceState } from "../../contract/instance.ts";
+import type { InstanceState, Settings } from "../../contract/instance.ts";
 import { publish } from "../../events.ts";
-import { extensionFromMime, mediaDir, mediaUrl } from "../../media.ts";
-import { getInstance } from "../../store/instances.ts";
+import { extensionFromMime, mediaUrl, saveMediaFile } from "../../media.ts";
+import { defaultSettings, getInstance } from "../../store/instances.ts";
 import { knownName, patchMessage, rawMessage, recordMessage, recordReaction, updateStatus } from "../../store/journal.ts";
 import { enqueueNotification } from "../../store/notifications.ts";
 import { WebhookDispatcher } from "../../webhooks.ts";
 import type { ChannelWorker } from "../types.ts";
+import { clearAuthState, useMongoAuthState } from "./auth-state.ts";
 import { toBaileysJid, toGreenChatId } from "./jid.ts";
 import { isMediaMessage, senderData, toMessageData } from "./notify.ts";
 
@@ -55,7 +53,6 @@ export class WhatsAppWorker implements ChannelWorker {
 	state: InstanceState = "starting";
 	sock: WASocket | undefined;
 	private qr: string | undefined;
-	private readonly authDir: string;
 	private readonly webhooks: WebhookDispatcher;
 	private readonly queue: QueuedSend[] = [];
 	private sending = false;
@@ -72,12 +69,12 @@ export class WhatsAppWorker implements ChannelWorker {
 		readonly instanceId: number,
 		private readonly log: FastifyBaseLogger,
 	) {
-		this.authDir = path.join(config.dataDir, "instances", String(instanceId), "auth");
 		this.webhooks = new WebhookDispatcher(instanceId, log);
 	}
 
 	private get settings() {
-		return getInstance(this.instanceId)!.settings;
+		// The record can vanish while a deleted instance's worker winds down.
+		return getInstance(this.instanceId)?.settings ?? (defaultSettings as Settings);
 	}
 
 	get wid(): string {
@@ -91,11 +88,12 @@ export class WhatsAppWorker implements ChannelWorker {
 	async start(): Promise<void> {
 		this.stopped = false;
 		this.setState("starting");
-		fs.mkdirSync(this.authDir, { recursive: true, mode: 0o700 });
-		const { state, saveCreds } = await useMultiFileAuthState(this.authDir);
+		const { state, saveCreds } = await useMongoAuthState(this.instanceId);
 		const version = await fetchLatestBaileysVersion()
 			.then((v) => v.version)
 			.catch(() => undefined);
+		// Disposed (e.g. instance deleted) while loading: don't open a socket.
+		if (this.stopped) return;
 
 		const sock = makeWASocket({
 			auth: state,
@@ -104,7 +102,7 @@ export class WhatsAppWorker implements ChannelWorker {
 			browser: Browsers.windows("Desktop"),
 			markOnlineOnConnect: this.settings.keepOnlineStatus === "yes",
 			syncFullHistory: false,
-			getMessage: async (key) => (key.id ? this.loadMessage(key.id)?.message ?? undefined : undefined),
+			getMessage: async (key) => (key.id ? (await this.loadMessage(key.id))?.message ?? undefined : undefined),
 		});
 		this.sock = sock;
 
@@ -118,7 +116,7 @@ export class WhatsAppWorker implements ChannelWorker {
 				if (!key.fromMe || update.status == null || !key.id) continue;
 				const status = receiptStatus[update.status];
 				if (!status) continue;
-				updateStatus(this.instanceId, key.id, status);
+				void updateStatus(this.instanceId, key.id, status).catch((err) => this.log.error(err, "status update failed"));
 				this.notify("outgoingWebhook", {
 					typeWebhook: "outgoingMessageStatus",
 					chatId: toGreenChatId(key.remoteJid),
@@ -175,7 +173,7 @@ export class WhatsAppWorker implements ChannelWorker {
 			if (this.stopped) return;
 			if (code === DisconnectReason.loggedOut) {
 				// Unlinked from the phone (or logout()); wipe the session and show a fresh QR.
-				fs.rmSync(this.authDir, { recursive: true, force: true });
+				await clearAuthState(this.instanceId);
 				this.setState("notAuthorized");
 				void this.start();
 			} else if (code === DisconnectReason.forbidden) {
@@ -199,11 +197,11 @@ export class WhatsAppWorker implements ChannelWorker {
 	/** Adds the common envelope and enqueues, if the matching settings toggle is on. */
 	private notify(toggle: SettingsKey, body: Record<string, unknown>) {
 		if (this.settings[toggle] !== "yes") return;
-		enqueueNotification(this.instanceId, {
+		void enqueueNotification(this.instanceId, {
 			typeWebhook: body.typeWebhook,
 			instanceData: { idInstance: this.instanceId, wid: this.wid, typeInstance: "whatsapp" },
 			...body,
-		});
+		}).catch((err) => this.log.error(err, "notification enqueue failed"));
 	}
 
 	// ---- message memory -----------------------------------------------------
@@ -215,10 +213,10 @@ export class WhatsAppWorker implements ChannelWorker {
 	}
 
 	/** Recent in-memory copy first, then the serialized copy in the journal. */
-	loadMessage(id: string): WAMessage | undefined {
+	async loadMessage(id: string): Promise<WAMessage | undefined> {
 		const hit = this.recent.get(id);
 		if (hit) return hit;
-		const row = rawMessage(this.instanceId, id);
+		const row = await rawMessage(this.instanceId, id);
 		if (!row?.raw) return undefined;
 		try {
 			return JSON.parse(row.raw, BufferJSON.reviver) as WAMessage;
@@ -228,10 +226,10 @@ export class WhatsAppWorker implements ChannelWorker {
 	}
 
 	/** Key of a journaled message, reconstructed if the raw copy is missing. */
-	keyOf(chatId: string, id: string): WAMessageKey {
-		const stored = this.loadMessage(id);
+	async keyOf(chatId: string, id: string): Promise<WAMessageKey> {
+		const stored = await this.loadMessage(id);
 		if (stored) return stored.key;
-		const row = rawMessage(this.instanceId, id);
+		const row = await rawMessage(this.instanceId, id);
 		const fromMe = row?.direction === "outgoing";
 		return {
 			remoteJid: toBaileysJid(chatId),
@@ -267,24 +265,24 @@ export class WhatsAppWorker implements ChannelWorker {
 		// The journal keeps edits/revokes on the original entry and reactions in their own table.
 		if (data.typeMessage === "editedMessage") {
 			const edit = data.editedMessageData as { stanzaId: string; textMessage?: string; caption?: string };
-			patchMessage(this.instanceId, edit.stanzaId, {
+			await patchMessage(this.instanceId, edit.stanzaId, {
 				edited: true,
 				...(edit.textMessage !== undefined ? { textMessageData: { textMessage: edit.textMessage } } : {}),
 			});
 			if (this.settings.editedMessageWebhook !== "yes") return;
 		} else if (data.typeMessage === "deletedMessage") {
-			patchMessage(this.instanceId, (data.deletedMessageData as { stanzaId: string }).stanzaId, { deleted: true });
+			await patchMessage(this.instanceId, (data.deletedMessageData as { stanzaId: string }).stanzaId, { deleted: true });
 			if (this.settings.deletedMessageWebhook !== "yes") return;
 		} else if (data.typeMessage === "reactionMessage") {
 			const target = (data.quotedMessage as { stanzaId: string }).stanzaId;
 			const text = (data.extendedTextMessageData as { text: string }).text;
-			recordReaction(this.instanceId, sender.chatId, target, senderId, text, ts);
+			await recordReaction(this.instanceId, sender.chatId, target, senderId, text, ts);
 		} else {
 			if (isMediaMessage(data)) {
 				const url = await this.saveMedia(m, (data.fileMessageData as { mimeType: string }).mimeType);
 				data = { ...data, fileMessageData: { ...(data.fileMessageData as object), downloadUrl: url } };
 			}
-			recordMessage({
+			await recordMessage({
 				instanceId: this.instanceId,
 				idMessage: id,
 				chatId: sender.chatId,
@@ -329,7 +327,7 @@ export class WhatsAppWorker implements ChannelWorker {
 		try {
 			const buffer = await downloadMediaMessage(m, "buffer", {});
 			const fileName = `${m.key.id}.${extensionFromMime(mimeType)}`;
-			fs.writeFileSync(path.join(mediaDir(this.instanceId), fileName), buffer);
+			await saveMediaFile(this.instanceId, fileName, buffer);
 			return mediaUrl(config.publicUrl || `http://${config.host}:${config.port}`, this.instanceId, fileName);
 		} catch (err) {
 			this.log.warn({ instance: this.instanceId, err: (err as Error).message }, "media download failed");
@@ -383,20 +381,21 @@ export class WhatsAppWorker implements ChannelWorker {
 	}
 
 	async editMessage(chatId: string, id: string, text: string): Promise<void> {
-		await this.live.sendMessage(toBaileysJid(chatId), { text, edit: this.keyOf(chatId, id) });
+		await this.live.sendMessage(toBaileysJid(chatId), { text, edit: await this.keyOf(chatId, id) });
 	}
 
 	async deleteForEveryone(chatId: string, id: string): Promise<void> {
-		await this.live.sendMessage(toBaileysJid(chatId), { delete: this.keyOf(chatId, id) });
+		await this.live.sendMessage(toBaileysJid(chatId), { delete: await this.keyOf(chatId, id) });
 	}
 
 	async react(chatId: string, id: string, reaction: string): Promise<void> {
-		await this.live.sendMessage(toBaileysJid(chatId), { react: { text: reaction, key: this.keyOf(chatId, id) } });
+		await this.live.sendMessage(toBaileysJid(chatId), { react: { text: reaction, key: await this.keyOf(chatId, id) } });
 	}
 
 	async markRead(entries: { chatId: string; idMessage: string }[]): Promise<void> {
 		if (!entries.length) return;
-		await this.live.readMessages(entries.map((e) => this.keyOf(e.chatId, e.idMessage)));
+		const sock = this.live;
+		await sock.readMessages(await Promise.all(entries.map((e) => this.keyOf(e.chatId, e.idMessage))));
 	}
 
 	async subscribePresence(chatId: string): Promise<void> {
@@ -417,7 +416,7 @@ export class WhatsAppWorker implements ChannelWorker {
 		const about = Array.isArray(status) ? status[0]?.status?.status : status?.status;
 		return {
 			chatId,
-			name: knownName(this.instanceId, chatId),
+			name: await knownName(this.instanceId, chatId),
 			contactName: "",
 			avatar: await this.avatar(chatId),
 			about: typeof about === "string" ? about : "",
@@ -471,12 +470,12 @@ export class WhatsAppWorker implements ChannelWorker {
 				this.apiSentIds.add(job.messageID);
 				if (this.apiSentIds.size > RECENT_LIMIT) this.apiSentIds.delete(this.apiSentIds.values().next().value!);
 				try {
-					const quoted = job.quotedId ? this.loadMessage(job.quotedId) : undefined;
+					const quoted = job.quotedId ? await this.loadMessage(job.quotedId) : undefined;
 					const sent = await this.sock.sendMessage(jid, job.content, { messageId: job.messageID, quoted });
 					if (sent) this.remember(sent);
 				} catch (err) {
 					this.log.warn({ instance: this.instanceId, err: (err as Error).message }, "send failed");
-					recordMessage({
+					await recordMessage({
 						instanceId: this.instanceId,
 						idMessage: job.messageID,
 						chatId: String(job.body.chatId),

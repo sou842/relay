@@ -23,6 +23,10 @@ Create `apps/gateway/.env`:
 # Long random string; the web app uses it to create and delete instances.
 GATEWAY_ADMIN_KEY=change-me-to-a-long-random-string
 GATEWAY_PORT=7700
+# MongoDB for all gateway state (sessions, history, queue, media).
+# The same cluster as the web app is fine; it uses its own database.
+GATEWAY_MONGODB_URI=mongodb+srv://user:password@cluster.mongodb.net
+GATEWAY_MONGODB_DB=relay_gateway
 # Optional: public base URL put into media download links (e.g. your tunnel URL)
 # GATEWAY_PUBLIC_URL=https://gateway.example.com
 ```

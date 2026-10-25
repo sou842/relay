@@ -1,10 +1,7 @@
-import fs from "node:fs";
-import path from "node:path";
 import type { FastifyBaseLogger } from "fastify";
-import { config } from "./config.ts";
 import { providerByType } from "./providers/index.ts";
 import type { ChannelWorker } from "./providers/types.ts";
-import { deleteInstance, getInstance, listInstances } from "./store/instances.ts";
+import { deleteInstance, getInstance, listInstances, loadInstances } from "./store/instances.ts";
 
 // Keeps one live worker per instance. Instances created with the CLI while the
 // server runs are started lazily on their first API call.
@@ -15,6 +12,7 @@ export class InstanceManager {
 	constructor(private readonly log: FastifyBaseLogger) {}
 
 	async startAll(): Promise<void> {
+		await loadInstances();
 		for (const record of listInstances()) this.get(record.id);
 	}
 
@@ -38,8 +36,7 @@ export class InstanceManager {
 			worker.dispose();
 			this.workers.delete(id);
 		}
-		deleteInstance(id);
-		fs.rmSync(path.join(config.dataDir, "instances", String(id)), { recursive: true, force: true });
+		await deleteInstance(id);
 	}
 
 	async stopAll(): Promise<void> {

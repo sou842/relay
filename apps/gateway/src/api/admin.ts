@@ -3,7 +3,7 @@ import type { FastifyInstance, FastifyRequest } from "fastify";
 import { config } from "../config.ts";
 import type { InstanceManager } from "../manager.ts";
 import { providerByType, providers } from "../providers/index.ts";
-import { createInstance, getInstance, listInstances, type InstanceType } from "../store/instances.ts";
+import { createInstance, findInstance, getInstance, listInstances, type InstanceType } from "../store/instances.ts";
 import { ApiError } from "./errors.ts";
 
 // Management API for the web app: create / list / delete instances.
@@ -54,20 +54,20 @@ function adminRoutes(app: FastifyInstance, manager: InstanceManager) {
 	app.post<{ Body: { type?: InstanceType; name?: string } }>("/instances", async (req, reply) => {
 		const type = req.body?.type ?? "whatsapp";
 		if (!providerByType(type)) throw new ApiError(400, `Unsupported provider: ${type}`);
-		const record = createInstance(type, req.body?.name?.slice(0, 80));
+		const record = await createInstance(type, req.body?.name?.slice(0, 80));
 		manager.get(record.id);
 		return reply.status(201).send(describe(record.id, manager));
 	});
 
 	app.get<{ Params: { id: string } }>("/instances/:id", async (req) => {
 		const id = Number(req.params.id);
-		if (!getInstance(id)) throw new ApiError(404, "Instance not found");
+		if (!(await findInstance(id))) throw new ApiError(404, "Instance not found");
 		return describe(id, manager);
 	});
 
 	app.delete<{ Params: { id: string } }>("/instances/:id", async (req) => {
 		const id = Number(req.params.id);
-		if (!getInstance(id)) throw new ApiError(404, "Instance not found");
+		if (!(await findInstance(id))) throw new ApiError(404, "Instance not found");
 		await manager.remove(id);
 		return { deleted: true };
 	});

@@ -11,6 +11,7 @@ const backoffMs = [1000, 5000, 15000, 30000, 60000];
 
 export class WebhookDispatcher {
 	private running = false;
+	private rerun = false;
 	private failures = 0;
 	private timer: NodeJS.Timeout | undefined;
 	private readonly unsubscribe: () => void;
@@ -33,29 +34,43 @@ export class WebhookDispatcher {
 	}
 
 	private async drain(): Promise<void> {
-		if (this.running) return;
+		// A kick during a drain is remembered, so a notification queued while the
+		// queue looked empty is not left waiting for the next one.
+		if (this.running) {
+			this.rerun = true;
+			return;
+		}
 		this.running = true;
 		try {
-			for (;;) {
-				const settings = getInstance(this.instanceId)?.settings;
-				if (!settings?.webhookUrl) return;
-				const head = peekNotification(this.instanceId);
-				if (!head) return;
-
-				const ok = await this.post(settings.webhookUrl, settings.webhookUrlToken, head.body);
-				if (!ok) {
-					const delay = backoffMs[Math.min(this.failures++, backoffMs.length - 1)];
-					this.timer = setTimeout(() => {
-						this.timer = undefined;
-						void this.drain();
-					}, delay);
-					return;
-				}
-				this.failures = 0;
-				deleteNotification(this.instanceId, head.receiptId);
-			}
+			do {
+				this.rerun = false;
+				await this.deliverAll();
+			} while (this.rerun && !this.timer);
+		} catch (err) {
+			this.log.warn({ instance: this.instanceId, err: (err as Error).message }, "webhook queue failed");
 		} finally {
 			this.running = false;
+		}
+	}
+
+	private async deliverAll(): Promise<void> {
+		for (;;) {
+			const settings = getInstance(this.instanceId)?.settings;
+			if (!settings?.webhookUrl) return;
+			const head = await peekNotification(this.instanceId);
+			if (!head) return;
+
+			const ok = await this.post(settings.webhookUrl, settings.webhookUrlToken, head.body);
+			if (!ok) {
+				const delay = backoffMs[Math.min(this.failures++, backoffMs.length - 1)];
+				this.timer = setTimeout(() => {
+					this.timer = undefined;
+					void this.drain();
+				}, delay);
+				return;
+			}
+			this.failures = 0;
+			await deleteNotification(this.instanceId, head.receiptId);
 		}
 	}
 

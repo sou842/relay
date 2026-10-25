@@ -12,7 +12,7 @@ const faqs = [
 	},
 	{
 		q: "Where are my messages stored?",
-		a: "In the gateway's data folder on your machine (a SQLite database plus media files), with account records in your MongoDB. Messages still travel through WhatsApp's servers like any other chat.",
+		a: "In your own MongoDB: the gateway keeps sessions, history and media in its database, and the web app keeps accounts in another. Messages still travel through WhatsApp's servers like any other chat.",
 	},
 	{
 		q: "Can I use GREEN-API's SDKs?",

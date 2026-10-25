@@ -23,8 +23,8 @@ browser ──► apps/web (Next.js 16)                      apps/gateway (Fasti
             ├─ /app/i/{id}/chat  WhatsApp-style chat         ├─ whatsapp (Baileys)
             └─ /api/i/{id}/…  proxy: session → ownership        └─ telegram (later, GramJS)
                                check → gateway with token
-web DB (SQLite via libsql + Drizzle): users, sessions, instances(owner, provider, gateway id, token)
-gateway DB (node:sqlite): instances, notification queue, message journal
+web DB (MongoDB): users, sessions, instances(owner, provider, gateway id, token)
+gateway DB (MongoDB, own database): instances, notification queue, message journal, WhatsApp auth keys, media (GridFS)
 ```
 
 Why proxy through Next.js: instance tokens stay server-side, every call is

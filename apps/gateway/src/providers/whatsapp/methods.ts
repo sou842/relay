@@ -132,11 +132,11 @@ export const whatsappMethods: Record<string, Def> = {
 	},
 	sendFileByUpload: {
 		verb: "POST",
-		handler: (ctx) => {
+		handler: async (ctx) => {
 			requireChatId(ctx.body);
 			if (!ctx.file) throw badRequest("multipart field 'file' is required");
 			const fileName = String(ctx.body.fileName || ctx.file.filename || "file");
-			const stored = storeUpload(ctx.instance.id, ctx.baseUrl, ctx.file, fileName);
+			const stored = await storeUpload(ctx.instance.id, ctx.baseUrl, ctx.file, fileName);
 			// Extension: voiceNote=true sends audio as a push-to-talk voice message.
 			const ptt = ctx.body.voiceNote === "true" || ctx.body.voiceNote === true;
 			const content = mediaContent(stored.mimetype, ctx.file.buffer, fileName, ctx.body.caption || undefined, ptt);
@@ -178,18 +178,21 @@ export const whatsappMethods: Record<string, Def> = {
 	},
 	forwardMessages: {
 		verb: "POST",
-		handler: (ctx) => {
+		handler: async (ctx) => {
 			requireChatId(ctx.body);
 			const { chatIdFrom, messages } = ctx.body;
 			if (typeof chatIdFrom !== "string" || !isValidChatId(chatIdFrom)) throw badRequest("chatIdFrom is required");
 			if (!Array.isArray(messages) || !messages.length) throw badRequest("messages must be a non-empty array of ids");
 			requireAuthorized(ctx.worker);
-			const ids = messages.map((id: unknown) => {
-				const original = ctx.worker.loadMessage(String(id));
-				if (!original) throw badRequest(`Message ${id} is not in the journal`);
-				return ctx.worker.enqueueSend("ForwardMessages", ctx.body, { forward: original });
-			});
-			return { messages: ids };
+			// Load every message first so a missing one rejects the whole call before anything is queued.
+			const originals = await Promise.all(
+				messages.map(async (id: unknown) => {
+					const original = await ctx.worker.loadMessage(String(id));
+					if (!original) throw badRequest(`Message ${id} is not in the journal`);
+					return original;
+				}),
+			);
+			return { messages: originals.map((original) => ctx.worker.enqueueSend("ForwardMessages", ctx.body, { forward: original })) };
 		},
 	},
 	sendTyping: {
@@ -274,7 +277,7 @@ export const whatsappMethods: Record<string, Def> = {
 		handler: async ({ instance, worker, body }) => {
 			const chatId = requireChatId(body);
 			// Without idMessage the whole chat is marked read (GREEN-API semantics).
-			const unread = markChatRead(instance.id, chatId);
+			const unread = await markChatRead(instance.id, chatId);
 			const targets = body.idMessage ? unread.filter((u) => u.idMessage === body.idMessage) : unread;
 			if (worker.state === "authorized") await worker.markRead(targets).catch(() => undefined);
 			return { setRead: true };

@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
-import fs from "node:fs";
 import path from "node:path";
-import { config } from "./config.ts";
+import type { Readable } from "node:stream";
+import { mediaBucket } from "./db.ts";
 
 const byExtension: Record<string, string> = {
 	jpg: "image/jpeg",
@@ -45,36 +45,52 @@ export function isInlineMime(mime: string): boolean {
 	return /^(image\/(jpeg|png|gif|webp)|video\/|audio\/)/.test(mime);
 }
 
-export function mediaDir(instanceId: number): string {
-	const dir = path.join(config.dataDir, "instances", String(instanceId), "media");
-	fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
-	return dir;
+function gridName(instanceId: number, fileName: string): string {
+	return `${instanceId}/${fileName}`;
 }
 
 /** Media file names are server-generated (message id + extension); reject anything else. */
-export function resolveMediaFile(instanceId: number, fileName: string): string | null {
-	if (!/^[A-Za-z0-9_-]+\.[a-z0-9]+$/.test(fileName)) return null;
-	const file = path.join(mediaDir(instanceId), fileName);
-	return fs.existsSync(file) ? file : null;
+export function isMediaFileName(fileName: string): boolean {
+	return /^[A-Za-z0-9_-]+\.[a-z0-9]+$/.test(fileName);
+}
+
+/** Stores a file in GridFS under the instance; replaces an older copy with the same name. */
+export async function saveMediaFile(instanceId: number, fileName: string, buffer: Buffer): Promise<void> {
+	const filename = gridName(instanceId, fileName);
+	const old = await mediaBucket.find({ filename }, { projection: { _id: 1 } }).toArray();
+	await new Promise<void>((resolve, reject) => {
+		const upload = mediaBucket.openUploadStream(filename, { metadata: { instanceId, contentType: mimeFromFileName(fileName) } });
+		upload.once("finish", () => resolve());
+		upload.once("error", reject);
+		upload.end(buffer);
+	});
+	for (const f of old) await mediaBucket.delete(f._id).catch(() => undefined);
+}
+
+/** Opens a stored media file, or null when it doesn't exist. */
+export async function openMediaFile(instanceId: number, fileName: string): Promise<{ stream: Readable; length: number } | null> {
+	if (!isMediaFileName(fileName)) return null;
+	const file = await mediaBucket.find({ filename: gridName(instanceId, fileName) }).sort({ uploadDate: -1 }).limit(1).next();
+	if (!file) return null;
+	return { stream: mediaBucket.openDownloadStream(file._id), length: file.length };
 }
 
 export function mediaUrl(baseUrl: string, instanceId: number, fileName: string): string {
 	return `${baseUrl}/media/${instanceId}/${fileName}`;
 }
 
-/** Writes an upload into the instance's media folder under a random name. */
-export function storeUpload(
+/** Stores an upload under a random name and returns its public URL. */
+export async function storeUpload(
 	instanceId: number,
 	baseUrl: string,
 	file: { buffer: Buffer; mimetype: string },
 	fileName: string,
-): { urlFile: string; path: string; mimetype: string } {
+): Promise<{ urlFile: string; mimetype: string }> {
 	const mimetype = file.mimetype && file.mimetype !== "application/octet-stream" ? file.mimetype : mimeFromFileName(fileName);
 	// Only known extensions are kept, so nothing is ever stored as .html, .svg, .js, ...
 	const given = path.extname(fileName).slice(1).toLowerCase();
 	const ext = given in byExtension ? given : extensionFromMime(mimetype);
 	const stored = `${crypto.randomUUID().replace(/-/g, "")}.${ext}`;
-	const target = path.join(mediaDir(instanceId), stored);
-	fs.writeFileSync(target, file.buffer);
-	return { urlFile: mediaUrl(baseUrl, instanceId, stored), path: target, mimetype };
+	await saveMediaFile(instanceId, stored, file.buffer);
+	return { urlFile: mediaUrl(baseUrl, instanceId, stored), mimetype };
 }

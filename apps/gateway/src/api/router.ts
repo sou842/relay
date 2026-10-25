@@ -5,10 +5,10 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { config } from "../config.ts";
 import { subscribe } from "../events.ts";
 import type { InstanceManager } from "../manager.ts";
-import { isInlineMime, mimeFromFileName, resolveMediaFile } from "../media.ts";
+import { isInlineMime, mimeFromFileName, openMediaFile } from "../media.ts";
 import { findMethod, providerByPrefix } from "../providers/index.ts";
 import type { UploadedFile } from "../providers/types.ts";
-import { getInstance, tokenMatches, type InstanceRecord } from "../store/instances.ts";
+import { findInstance, tokenMatches, type InstanceRecord } from "../store/instances.ts";
 import { registerAdminRoutes } from "./admin.ts";
 import { ApiError } from "./errors.ts";
 
@@ -39,11 +39,11 @@ async function readMultipart(req: FastifyRequest): Promise<{ body: Record<string
 	return { body, file };
 }
 
-function authenticate(instancePath: string, token: string) {
+async function authenticate(instancePath: string, token: string) {
 	const match = /^([a-z]+)Instance(\d+)$/.exec(instancePath);
 	const provider = match && providerByPrefix(match[1]);
 	if (!match || !provider) throw new ApiError(404, "Not found");
-	const instance = getInstance(Number(match[2]));
+	const instance = await findInstance(Number(match[2]));
 	if (!instance || instance.type !== provider.type || !tokenMatches(instance, token)) throw new ApiError(401, "Unauthorized");
 	return { provider, instance };
 }
@@ -73,7 +73,7 @@ export async function registerRoutes(app: FastifyInstance, manager: InstanceMana
 
 	const handle = async (req: FastifyRequest<{ Params: Params }>, reply: FastifyReply) => {
 		const { instancePath, method, token, extra } = req.params;
-		const { provider, instance } = authenticate(instancePath, token);
+		const { provider, instance } = await authenticate(instancePath, token);
 		const worker = manager.get(instance.id)!;
 
 		if (method.toLowerCase() === "events" && req.method === "GET") return streamEvents(req, reply, instance, worker.state);
@@ -116,17 +116,18 @@ export async function registerRoutes(app: FastifyInstance, manager: InstanceMana
 	app.route({ method: ["GET", "POST", "DELETE"], url: "/:instancePath/:method/:token/:extra", handler: handle });
 
 	app.get<{ Params: { id: string; file: string } }>("/media/:id/:file", async (req, reply) => {
-		const file = resolveMediaFile(Number(req.params.id), req.params.file);
+		const file = await openMediaFile(Number(req.params.id), req.params.file);
 		if (!file) throw new ApiError(404, "Not found");
 		// Files come from strangers (incoming documents): never let a browser run them on this origin.
-		const type = mimeFromFileName(file);
+		const type = mimeFromFileName(req.params.file);
 		return reply
 			.type(type)
 			.header("X-Content-Type-Options", "nosniff")
 			.header("Content-Security-Policy", "default-src 'none'; sandbox")
 			.header("Content-Disposition", isInlineMime(type) ? "inline" : "attachment")
 			.header("Cache-Control", "private, max-age=86400")
-			.send(fs.createReadStream(file));
+			.header("Content-Length", String(file.length))
+			.send(file.stream);
 	});
 
 	// Debug console: static files from apps/gateway/public.

@@ -1,5 +1,6 @@
 import { ApiError, badRequest } from "../api/errors.ts";
 import { storeUpload } from "../media.ts";
+import { assertHttpUrl } from "../net.ts";
 import { rotateToken, updateSettings } from "../store/instances.ts";
 import { chatHistory, getMessage, lastMessages, listChats } from "../store/journal.ts";
 import { clearNotifications, countNotifications, deleteNotification, receiveNotification } from "../store/notifications.ts";
@@ -22,6 +23,20 @@ export const commonMethods: Record<string, MethodDef> = {
 	setSettings: {
 		verb: "POST",
 		handler: ({ instance, worker, body }) => {
+			const { webhookUrl, webhookUrlToken, delaySendMessagesMilliseconds } = body;
+			if (webhookUrl !== undefined && webhookUrl !== "") {
+				if (typeof webhookUrl !== "string" || webhookUrl.length > 2048) throw badRequest("webhookUrl is malformed");
+				try {
+					assertHttpUrl(webhookUrl);
+				} catch (err) {
+					throw badRequest(`webhookUrl rejected: ${(err as Error).message}`);
+				}
+			}
+			if (webhookUrlToken !== undefined && (typeof webhookUrlToken !== "string" || webhookUrlToken.length > 512)) throw badRequest("webhookUrlToken is malformed");
+			if (delaySendMessagesMilliseconds !== undefined) {
+				const n = Number(delaySendMessagesMilliseconds);
+				if (!Number.isInteger(n) || n < 500 || n > 600000) throw badRequest("delaySendMessagesMilliseconds must be an integer from 500 to 600000");
+			}
 			updateSettings(instance.id, body);
 			worker.onSettingsChanged();
 			return { saveSettings: true };

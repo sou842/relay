@@ -3,7 +3,7 @@ import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { config } from "./config.ts";
 
-fs.mkdirSync(config.dataDir, { recursive: true });
+fs.mkdirSync(config.dataDir, { recursive: true, mode: 0o700 });
 
 export const db = new DatabaseSync(path.join(config.dataDir, "gateway.db"));
 

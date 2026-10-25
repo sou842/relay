@@ -91,7 +91,7 @@ export class WhatsAppWorker implements ChannelWorker {
 	async start(): Promise<void> {
 		this.stopped = false;
 		this.setState("starting");
-		fs.mkdirSync(this.authDir, { recursive: true });
+		fs.mkdirSync(this.authDir, { recursive: true, mode: 0o700 });
 		const { state, saveCreds } = await useMultiFileAuthState(this.authDir);
 		const version = await fetchLatestBaileysVersion()
 			.then((v) => v.version)

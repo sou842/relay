@@ -15,7 +15,18 @@ export class HttpError extends Error {
 	}
 }
 
+/**
+ * Rejects requests a browser marks as coming from another site (CSRF, and
+ * top-level links to state-changing GETs like .../call/logout). Non-browser
+ * clients send no Sec-Fetch-Site header and still need a session cookie.
+ */
+function requireSameSite(request: Request) {
+	const site = request.headers.get("sec-fetch-site");
+	if (site && site !== "same-origin" && site !== "none") throw new HttpError(403, "Cross-site request blocked");
+}
+
 export async function requireApiSession(request: Request): Promise<Session> {
+	requireSameSite(request);
 	const session = await auth.api.getSession({ headers: request.headers });
 	if (!session) throw new HttpError(401, "Sign in required");
 	return session;

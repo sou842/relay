@@ -40,9 +40,14 @@ export function extensionFromMime(mime: string): string {
 	return hit ? hit[0] : "bin";
 }
 
+/** True for types a browser may render inline; everything else is served as a download. */
+export function isInlineMime(mime: string): boolean {
+	return /^(image\/(jpeg|png|gif|webp)|video\/|audio\/)/.test(mime);
+}
+
 export function mediaDir(instanceId: number): string {
 	const dir = path.join(config.dataDir, "instances", String(instanceId), "media");
-	fs.mkdirSync(dir, { recursive: true });
+	fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
 	return dir;
 }
 
@@ -65,8 +70,10 @@ export function storeUpload(
 	fileName: string,
 ): { urlFile: string; path: string; mimetype: string } {
 	const mimetype = file.mimetype && file.mimetype !== "application/octet-stream" ? file.mimetype : mimeFromFileName(fileName);
-	const ext = path.extname(fileName).slice(1).toLowerCase() || extensionFromMime(mimetype);
-	const stored = `${crypto.randomUUID().replace(/-/g, "")}.${ext.replace(/[^a-z0-9]/g, "") || "bin"}`;
+	// Only known extensions are kept, so nothing is ever stored as .html, .svg, .js, ...
+	const given = path.extname(fileName).slice(1).toLowerCase();
+	const ext = given in byExtension ? given : extensionFromMime(mimetype);
+	const stored = `${crypto.randomUUID().replace(/-/g, "")}.${ext}`;
 	const target = path.join(mediaDir(instanceId), stored);
 	fs.writeFileSync(target, file.buffer);
 	return { urlFile: mediaUrl(baseUrl, instanceId, stored), path: target, mimetype };

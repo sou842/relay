@@ -1,4 +1,5 @@
 import "server-only";
+import crypto from "node:crypto";
 import { ObjectId } from "mongodb";
 import { db } from "./db";
 import { gatewayAdmin, GatewayError, type InstanceCredentials } from "./gateway";
@@ -36,6 +37,26 @@ async function ensureIndexes() {
 	indexed = true;
 }
 
+export const MAX_INSTANCES_PER_USER = 5;
+
+async function assertBelowLimit(userId: string) {
+	if ((await instances.countDocuments({ userId })) >= MAX_INSTANCES_PER_USER) {
+		throw new GatewayError(400, `Limit is ${MAX_INSTANCES_PER_USER} instances per account`);
+	}
+}
+
+/** Inserts, then re-counts: parallel requests that all passed the first check can't exceed the cap. */
+async function insertWithinLimit(doc: InstanceDoc): Promise<boolean> {
+	await instances.insertOne(doc);
+	const owned = await instances.find({ userId: doc.userId }, { projection: { _id: 1 } }).sort({ _id: 1 }).toArray();
+	const position = owned.findIndex((o) => o._id.equals(doc._id));
+	if (position < MAX_INSTANCES_PER_USER) return true;
+	await instances.deleteOne({ _id: doc._id });
+	return false;
+}
+
+const limitError = () => new GatewayError(400, `Limit is ${MAX_INSTANCES_PER_USER} instances per account`);
+
 export function toSummary(doc: InstanceDoc): InstanceSummary {
 	return {
 		id: doc._id.toHexString(),
@@ -63,6 +84,7 @@ export async function getOwnedInstance(userId: string, id: string): Promise<Inst
 
 export async function createInstance(userId: string, provider: ProviderId, name: string): Promise<InstanceDoc> {
 	await ensureIndexes();
+	await assertBelowLimit(userId);
 	const created = await gatewayAdmin.create(provider, name);
 	const doc: InstanceDoc = {
 		_id: new ObjectId(),
@@ -73,7 +95,10 @@ export async function createInstance(userId: string, provider: ProviderId, name:
 		name,
 		createdAt: new Date(),
 	};
-	await instances.insertOne(doc);
+	if (!(await insertWithinLimit(doc))) {
+		await gatewayAdmin.remove(created.idInstance).catch(() => undefined);
+		throw limitError();
+	}
 	return doc;
 }
 
@@ -83,8 +108,9 @@ export async function createInstance(userId: string, provider: ProviderId, name:
  */
 export async function importInstance(userId: string, gatewayId: number, token: string, name: string): Promise<InstanceDoc> {
 	await ensureIndexes();
+	await assertBelowLimit(userId);
 	const existing = await gatewayAdmin.get(gatewayId).catch(() => null);
-	if (!existing || existing.apiTokenInstance !== token) throw new GatewayError(400, "No instance with that idInstance and token");
+	if (!existing || !sameSecret(existing.apiTokenInstance, token)) throw new GatewayError(400, "No instance with that idInstance and token");
 	if (await instances.findOne({ gatewayId })) throw new GatewayError(409, "This instance is already attached to an account");
 	const doc: InstanceDoc = {
 		_id: new ObjectId(),
@@ -95,8 +121,13 @@ export async function importInstance(userId: string, gatewayId: number, token: s
 		name: name || existing.name || `Instance ${gatewayId}`,
 		createdAt: new Date(),
 	};
-	await instances.insertOne(doc);
+	if (!(await insertWithinLimit(doc))) throw limitError();
 	return doc;
+}
+
+function sameSecret(a: string, b: string): boolean {
+	const digest = (s: string) => crypto.createHash("sha256").update(s).digest();
+	return crypto.timingSafeEqual(digest(a), digest(b));
 }
 
 export async function renameInstance(doc: InstanceDoc, name: string): Promise<void> {

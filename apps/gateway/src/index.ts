@@ -4,7 +4,20 @@ import { config } from "./config.ts";
 import { InstanceManager } from "./manager.ts";
 import { purgeExpiredNotifications } from "./store/notifications.ts";
 
-const app = Fastify({ logger: { level: config.logLevel } });
+// Instance tokens are part of the URL (/{prefix}Instance{id}/{method}/{token}); keep them out of logs.
+const redactUrl = (url: string) => url.replace(/^(\/\w+Instance\d+\/[^/]+\/)[^/?]+/i, "$1***");
+
+process.umask(0o077);
+
+const app = Fastify({
+	logger: {
+		level: config.logLevel,
+		serializers: {
+			req: (req) => ({ method: req.method, url: redactUrl(req.url), remoteAddress: req.ip }),
+		},
+	},
+	bodyLimit: 1024 * 1024,
+});
 const manager = new InstanceManager(app.log);
 
 await registerRoutes(app, manager);

@@ -1,6 +1,7 @@
 import type { AnyMessageContent } from "baileys";
 import { ApiError, badRequest } from "../../api/errors.ts";
 import { mimeFromFileName, storeUpload } from "../../media.ts";
+import { safeRequest } from "../../net.ts";
 import { markChatRead } from "../../store/journal.ts";
 import { requireChatId as requireChatIdLike } from "../common-methods.ts";
 import type { MethodContext, MethodDef } from "../types.ts";
@@ -115,12 +116,18 @@ export const whatsappMethods: Record<string, Def> = {
 	},
 	sendFileByUrl: {
 		verb: "POST",
-		handler: (ctx) => {
+		handler: async (ctx) => {
 			requireChatId(ctx.body);
+			requireAuthorized(ctx.worker);
 			const { urlFile, fileName, caption } = ctx.body;
 			if (typeof urlFile !== "string" || !/^https?:\/\//.test(urlFile)) throw badRequest("urlFile must be an http(s) URL");
 			if (typeof fileName !== "string" || !fileName) throw badRequest("fileName is required");
-			return queueSend(ctx, "sendFileByUrl", mediaContent(mimeFromFileName(fileName), { url: urlFile }, fileName, caption));
+			// Downloaded here (not by Baileys) so private addresses, redirects and size are checked.
+			const res = await safeRequest(urlFile, { maxBytes: 64 * 1024 * 1024, timeoutMs: 30000 }).catch((err: Error) => {
+				throw badRequest(`Could not download urlFile: ${err.message}`);
+			});
+			if (res.status < 200 || res.status >= 300) throw badRequest(`Could not download urlFile: HTTP ${res.status}`);
+			return queueSend(ctx, "sendFileByUrl", mediaContent(mimeFromFileName(fileName), res.body, fileName, caption));
 		},
 	},
 	sendFileByUpload: {

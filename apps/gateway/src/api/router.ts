@@ -5,7 +5,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { config } from "../config.ts";
 import { subscribe } from "../events.ts";
 import type { InstanceManager } from "../manager.ts";
-import { resolveMediaFile } from "../media.ts";
+import { isInlineMime, mimeFromFileName, resolveMediaFile } from "../media.ts";
 import { findMethod, providerByPrefix } from "../providers/index.ts";
 import type { UploadedFile } from "../providers/types.ts";
 import { getInstance, tokenMatches, type InstanceRecord } from "../store/instances.ts";
@@ -68,8 +68,8 @@ function streamEvents(req: FastifyRequest, reply: FastifyReply, instance: Instan
 }
 
 export async function registerRoutes(app: FastifyInstance, manager: InstanceManager) {
-	await app.register(multipart, { limits: { fileSize: 100 * 1024 * 1024, files: 1 } });
-	registerAdminRoutes(app, manager);
+	await app.register(multipart, { limits: { fileSize: 64 * 1024 * 1024, files: 1 } });
+	await registerAdminRoutes(app, manager);
 
 	const handle = async (req: FastifyRequest<{ Params: Params }>, reply: FastifyReply) => {
 		const { instancePath, method, token, extra } = req.params;
@@ -118,7 +118,15 @@ export async function registerRoutes(app: FastifyInstance, manager: InstanceMana
 	app.get<{ Params: { id: string; file: string } }>("/media/:id/:file", async (req, reply) => {
 		const file = resolveMediaFile(Number(req.params.id), req.params.file);
 		if (!file) throw new ApiError(404, "Not found");
-		return reply.header("Cache-Control", "private, max-age=86400").send(fs.createReadStream(file));
+		// Files come from strangers (incoming documents): never let a browser run them on this origin.
+		const type = mimeFromFileName(file);
+		return reply
+			.type(type)
+			.header("X-Content-Type-Options", "nosniff")
+			.header("Content-Security-Policy", "default-src 'none'; sandbox")
+			.header("Content-Disposition", isInlineMime(type) ? "inline" : "attachment")
+			.header("Cache-Control", "private, max-age=86400")
+			.send(fs.createReadStream(file));
 	});
 
 	// Debug console: static files from apps/gateway/public.
@@ -129,12 +137,22 @@ export async function registerRoutes(app: FastifyInstance, manager: InstanceMana
 		const type = uiFiles[name];
 		if (type === undefined) throw new ApiError(404, "Not found");
 		const file = path.join(publicDir, name || "index.html");
-		return reply.type(type).header("Cache-Control", "no-cache").send(fs.createReadStream(file));
+		return reply
+			.type(type)
+			.header("Cache-Control", "no-cache")
+			.header("X-Content-Type-Options", "nosniff")
+			.header("X-Frame-Options", "DENY")
+			.header("Content-Security-Policy", "default-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'")
+			.send(fs.createReadStream(file));
 	});
 
 	app.setErrorHandler((err: Error & { statusCode?: number }, req, reply) => {
 		const status = err instanceof ApiError ? err.statusCode : (err.statusCode ?? 500);
-		if (status >= 500) req.log.error(err);
+		if (status >= 500) {
+			// Internal details (SQLite, file paths) stay in the log.
+			req.log.error(err);
+			return reply.status(status).send({ message: "Internal server error" });
+		}
 		reply.status(status).send({ message: err.message });
 	});
 }

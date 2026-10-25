@@ -1,4 +1,5 @@
 import type { FastifyBaseLogger } from "fastify";
+import { safeRequest } from "./net.ts";
 import { getInstance } from "./store/instances.ts";
 import { deleteNotification, onNotification, peekNotification } from "./store/notifications.ts";
 
@@ -60,17 +61,20 @@ export class WebhookDispatcher {
 
 	private async post(url: string, token: string | undefined, body: unknown): Promise<boolean> {
 		try {
-			const res = await fetch(url, {
+			// POSTs are never redirected; private addresses are refused at connect time.
+			const res = await safeRequest(url, {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
 					...(token ? { Authorization: `Bearer ${token}` } : {}),
 				},
 				body: JSON.stringify(body),
-				signal: AbortSignal.timeout(15000),
+				timeoutMs: 15000,
+				maxBytes: 64 * 1024,
 			});
-			if (!res.ok) this.log.warn({ instance: this.instanceId, status: res.status }, "webhook rejected");
-			return res.ok;
+			const ok = res.status >= 200 && res.status < 300;
+			if (!ok) this.log.warn({ instance: this.instanceId, status: res.status }, "webhook rejected");
+			return ok;
 		} catch (err) {
 			this.log.warn({ instance: this.instanceId, err: (err as Error).message }, "webhook delivery failed");
 			return false;

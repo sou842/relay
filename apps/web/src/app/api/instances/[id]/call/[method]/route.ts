@@ -8,13 +8,24 @@ import { credentials } from "@/lib/instances";
 
 type Ctx = { params: Promise<{ id: string; method: string }> };
 
-// Token rotation goes through /credentials so the stored token stays in sync;
-// the live feed has its own route.
-const BLOCKED = new Set(["updateapitoken", "events"]);
+// Only the methods the UI uses. Token rotation goes through /credentials so the
+// stored token stays in sync; the live feed has its own route. Anything else
+// (e.g. sendFileByUrl) is for API clients with their own token.
+const ALLOWED = new Set(
+	[
+		"getStateInstance", "getSettings", "getWaSettings", "setSettings", "qr", "getAuthorizationCode", "logout", "reboot",
+		"getChats", "getChatHistory", "getAvatar", "getContactInfo", "getGroupData", "checkWhatsapp", "readChat", "subscribePresence",
+		"sendMessage", "sendFileByUpload", "sendPoll", "sendLocation", "sendContact", "sendReaction", "sendTyping",
+		"editMessage", "deleteMessage", "forwardMessages",
+	].map((m) => m.toLowerCase()),
+);
+
+// Upload cap for the proxy itself (Vercel stops at 4.5 MB; self-hosted Next.js has no default).
+const MAX_BODY_BYTES = 64 * 1024 * 1024;
 
 async function proxy(request: Request, { params }: Ctx): Promise<Response> {
 	const { id, method } = await params;
-	if (!/^[A-Za-z]+$/.test(method) || BLOCKED.has(method.toLowerCase())) throw new HttpError(404, "Unknown method");
+	if (!/^[A-Za-z]+$/.test(method) || !ALLOWED.has(method.toLowerCase())) throw new HttpError(404, "Unknown method");
 	const { instance } = await requireOwnedInstance(request, id);
 
 	const url = new URL(request.url);
@@ -23,6 +34,7 @@ async function proxy(request: Request, { params }: Ctx): Promise<Response> {
 	const search = url.searchParams.size ? `?${url.searchParams}` : "";
 
 	const hasBody = request.method !== "GET" && request.method !== "DELETE";
+	if (hasBody && Number(request.headers.get("content-length") ?? 0) > MAX_BODY_BYTES) throw new HttpError(413, "File is too large");
 	const contentType = request.headers.get("content-type");
 	const upstream = await fetch(instanceUrl(credentials(instance), method, extra, search), {
 		method: request.method,

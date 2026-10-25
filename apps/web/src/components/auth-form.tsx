@@ -17,14 +17,25 @@ function IconInput({ icon: Icon, end, ...props }: React.ComponentProps<typeof In
 	);
 }
 
+/** Only same-origin paths; "/\evil.com", "//evil.com" and tab/newline tricks resolve elsewhere and fall back. */
+function safeRedirect(next?: string): string {
+	if (!next || !next.startsWith("/")) return "/app";
+	try {
+		const base = "https://relay.invalid";
+		const url = new URL(next, base);
+		return url.origin === base ? url.pathname + url.search + url.hash : "/app";
+	} catch {
+		return "/app";
+	}
+}
+
 export function AuthForm({ mode, next }: { mode: "sign-in" | "sign-up"; next?: string }) {
 	const router = useRouter();
 	const [error, setError] = useState<string | null>(null);
 	const [pending, setPending] = useState(false);
 	const [show, setShow] = useState(false);
 	const isSignUp = mode === "sign-up";
-	// Only allow same-site relative redirects.
-	const target = next && next.startsWith("/") && !next.startsWith("//") ? next : "/app";
+	const target = safeRedirect(next);
 
 	async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
 		event.preventDefault();

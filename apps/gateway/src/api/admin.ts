@@ -9,11 +9,13 @@ import { ApiError } from "./errors.ts";
 // Management API for the web app: create / list / delete instances.
 // Authenticated with GATEWAY_ADMIN_KEY; disabled entirely when the key is unset.
 
+const digest = (value: string) => crypto.createHash("sha256").update(value).digest();
+
 function requireAdmin(req: FastifyRequest) {
 	if (!config.adminKey) throw new ApiError(403, "Admin API disabled: set GATEWAY_ADMIN_KEY");
-	const given = Buffer.from(req.headers.authorization?.replace(/^Bearer\s+/i, "") ?? "");
-	const expected = Buffer.from(config.adminKey);
-	if (given.length !== expected.length || !crypto.timingSafeEqual(given, expected)) throw new ApiError(401, "Unauthorized");
+	// Hashing first keeps the comparison constant-time without leaking the key's length.
+	const given = digest(req.headers.authorization?.replace(/^Bearer\s+/i, "") ?? "");
+	if (!crypto.timingSafeEqual(given, digest(config.adminKey))) throw new ApiError(401, "Unauthorized");
 }
 
 function describe(id: number, manager: InstanceManager) {
@@ -32,16 +34,24 @@ function describe(id: number, manager: InstanceManager) {
 	};
 }
 
-export function registerAdminRoutes(app: FastifyInstance, manager: InstanceManager) {
-	app.addHook("onRequest", async (req) => {
-		if (req.url.startsWith("/admin/")) requireAdmin(req);
-	});
+// Registered as an encapsulated plugin so the hook guards every matched admin route.
+// (Matching on req.url was bypassable with percent-encoding, e.g. /%61dmin/instances.)
+export async function registerAdminRoutes(app: FastifyInstance, manager: InstanceManager) {
+	await app.register(
+		async (admin) => {
+			admin.addHook("onRequest", async (req) => requireAdmin(req));
+			adminRoutes(admin, manager);
+		},
+		{ prefix: "/admin" },
+	);
+}
 
-	app.get("/admin/providers", async () => providers.map((p) => ({ type: p.type, urlPrefix: `${p.urlPrefix}Instance` })));
+function adminRoutes(app: FastifyInstance, manager: InstanceManager) {
+	app.get("/providers", async () => providers.map((p) => ({ type: p.type, urlPrefix: `${p.urlPrefix}Instance` })));
 
-	app.get("/admin/instances", async () => listInstances().map((i) => describe(i.id, manager)));
+	app.get("/instances", async () => listInstances().map((i) => describe(i.id, manager)));
 
-	app.post<{ Body: { type?: InstanceType; name?: string } }>("/admin/instances", async (req, reply) => {
+	app.post<{ Body: { type?: InstanceType; name?: string } }>("/instances", async (req, reply) => {
 		const type = req.body?.type ?? "whatsapp";
 		if (!providerByType(type)) throw new ApiError(400, `Unsupported provider: ${type}`);
 		const record = createInstance(type, req.body?.name?.slice(0, 80));
@@ -49,13 +59,13 @@ export function registerAdminRoutes(app: FastifyInstance, manager: InstanceManag
 		return reply.status(201).send(describe(record.id, manager));
 	});
 
-	app.get<{ Params: { id: string } }>("/admin/instances/:id", async (req) => {
+	app.get<{ Params: { id: string } }>("/instances/:id", async (req) => {
 		const id = Number(req.params.id);
 		if (!getInstance(id)) throw new ApiError(404, "Instance not found");
 		return describe(id, manager);
 	});
 
-	app.delete<{ Params: { id: string } }>("/admin/instances/:id", async (req) => {
+	app.delete<{ Params: { id: string } }>("/instances/:id", async (req) => {
 		const id = Number(req.params.id);
 		if (!getInstance(id)) throw new ApiError(404, "Instance not found");
 		await manager.remove(id);

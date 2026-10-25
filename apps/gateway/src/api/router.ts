@@ -131,6 +131,9 @@ export async function registerRoutes(app: FastifyInstance, manager: InstanceMana
 	});
 
 	// Debug console: static files from apps/gateway/public.
+	// Liveness check for the host and uptime pingers (keeps free plans from sleeping).
+	app.get("/health", async () => ({ ok: true }));
+
 	app.get("/", (_req, reply) => reply.redirect("/ui/"));
 	app.get("/ui", (_req, reply) => reply.redirect("/ui/"));
 	app.get<{ Params: { "*": string } }>("/ui/*", async (req, reply) => {

@@ -10,10 +10,13 @@ if (process.env.NODE_ENV === "production" && !process.env.BETTER_AUTH_SECRET) th
 
 // On Vercel, fall back to the deployment's own URLs so sign-in also works on preview deployments.
 const vercelOrigins = [process.env.VERCEL_URL, process.env.VERCEL_BRANCH_URL, process.env.VERCEL_PROJECT_PRODUCTION_URL].filter(Boolean).map((host) => `https://${host}`);
+// Extra public URLs (team aliases, custom domains), comma-separated.
+const extraOrigins = (process.env.BETTER_AUTH_TRUSTED_ORIGINS ?? "").split(",").map((o) => o.trim().replace(/\/$/, "")).filter(Boolean);
+const baseURL = process.env.BETTER_AUTH_URL?.replace(/\/$/, "") ?? (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : undefined);
 
 export const auth = betterAuth({
-	baseURL: process.env.BETTER_AUTH_URL ?? (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : undefined),
-	trustedOrigins: vercelOrigins,
+	baseURL,
+	trustedOrigins: [...new Set([...(baseURL ? [baseURL] : []), ...vercelOrigins, "https://web-sou842s-projects.vercel.app", ...extraOrigins])],
 	// Serverless instances don't share memory, so rate-limit counters live in the database.
 	rateLimit: { enabled: true, storage: "database" },
 	database: mongodbAdapter(db, { client: mongoClient }),
